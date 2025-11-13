@@ -1,4 +1,4 @@
-@extends('jiny-site::layouts.home')
+@extends('jiny-partner::layouts.home')
 
 @section('title', '작성한 리뷰')
 
@@ -133,7 +133,7 @@
                             <div class="d-flex">
                                 <div class="avatar avatar-md me-3">
                                     <div class="avatar-img rounded-circle bg-info text-white d-flex align-items-center justify-content-center">
-                                        {{ substr($review->reviewee_name, 0, 1) }}
+                                        {{ mb_substr($review->reviewee_name, 0, 1, 'UTF-8') }}
                                     </div>
                                 </div>
                                 <div class="flex-grow-1">

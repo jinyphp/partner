@@ -84,6 +84,8 @@
           </li>
         </ul> --}}
 
+        @includeIf("jiny-partner::partials.home.partner")
+
         <!-- Navbar header -->
         {{-- <div class="d-flex flex-column gap-1">
           <span class="navbar-header">Account Settings</span>

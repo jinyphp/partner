@@ -61,13 +61,13 @@ return new class extends Migration
             // 매출 검증 및 승인
             $table->boolean('requires_approval')->default(false); // 승인 필요 여부
             $table->boolean('is_approved')->default(false); // 승인 상태
-            $table->unsignedBigInteger('approved_by')->nullable(); // 승인자 ID
+            $table->unsignedBigInteger('approved_by')->nullable(); // 승인자 파트너 ID
             $table->timestamp('approved_at')->nullable(); // 승인 일시
             $table->text('approval_notes')->nullable(); // 승인 메모
 
-            // 관리 정보
-            $table->unsignedBigInteger('created_by')->nullable(); // 등록자 ID
-            $table->unsignedBigInteger('updated_by')->nullable(); // 수정자 ID
+            // 관리 정보 (파트너 시스템에서는 partner_users.id 참조)
+            $table->unsignedBigInteger('created_by')->nullable(); // 등록자 파트너 ID
+            $table->unsignedBigInteger('updated_by')->nullable(); // 수정자 파트너 ID
             $table->text('admin_notes')->nullable(); // 관리자 메모
 
             // 외부 연동
@@ -85,10 +85,10 @@ return new class extends Migration
             $table->index(['confirmed_at']); // 확정일별 조회
             $table->index(['commission_calculated_at']); // 커미션 계산일별 조회
 
-            // 외래키 제약조건
-            $table->foreign('approved_by')->references('id')->on('users')->onDelete('set null');
-            $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
-            $table->foreign('updated_by')->references('id')->on('users')->onDelete('set null');
+            // 외래키 제약조건 (파트너 시스템에서는 partner_users 테이블 참조)
+            $table->foreign('approved_by')->references('id')->on('partner_users')->onDelete('set null');
+            $table->foreign('created_by')->references('id')->on('partner_users')->onDelete('set null');
+            $table->foreign('updated_by')->references('id')->on('partner_users')->onDelete('set null');
         });
 
     }

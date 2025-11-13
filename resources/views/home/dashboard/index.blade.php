@@ -1,205 +1,359 @@
-@extends($layout ?? 'jiny-auth::layouts.home')
+@extends('jiny-partner::layouts.home')
 
 @section('title', '파트너 대시보드')
 
-@section('styles')
-<script src="https://cdn.tailwindcss.com"></script>
-@endsection
-
 @section('content')
-<div class="container mx-auto px-4 py-6">
-    <!-- 파트너 기본 정보 카드 -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-6" id="partner-info-card">
-        <div class="flex items-center justify-between mb-4">
-            <h1 class="text-2xl font-bold text-gray-800">파트너 대시보드</h1>
-            <div class="flex items-center space-x-2">
-                <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium" id="partner-tier">
-                    {{ $partner->partnerTier->tier_name ?? '미설정' }}
-                </span>
-                <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium" id="partner-type">
-                    {{ $partner->partnerType->type_name ?? '미설정' }}
-                </span>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <!-- 파트너 기본 정보 -->
-            <div class="bg-gray-50 rounded-lg p-4" id="partner-basic-info">
-                <h3 class="text-sm font-medium text-gray-500 mb-2">파트너 정보</h3>
-                <div class="space-y-1">
-                    <p class="text-sm"><span class="font-medium">이름:</span> <span id="partner-name">{{ $partner->name }}</span></p>
-                    <p class="text-sm"><span class="font-medium">이메일:</span> <span id="partner-email">{{ $partner->email }}</span></p>
-                    <p class="text-sm"><span class="font-medium">레벨:</span> <span id="partner-level">{{ $networkInfo['level'] }}</span></p>
-                    <p class="text-sm"><span class="font-medium">경로:</span> <span id="partner-path">{{ $networkInfo['path'] }}</span></p>
-                </div>
-            </div>
-
-            <!-- 네트워크 정보 -->
-            <div class="bg-blue-50 rounded-lg p-4" id="network-info">
-                <h3 class="text-sm font-medium text-blue-700 mb-2">네트워크</h3>
-                <div class="space-y-1">
-                    <p class="text-sm">
-                        <span class="font-medium">상위 파트너:</span>
-                        <span id="parent-partner">
-                            {{ $networkInfo['parent_partner']->name ?? '없음' }}
+<div class="container-fluid p-6">
+    <!-- Page Header with Partner Status -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="border-bottom pb-3 mb-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="mb-1 h2 fw-bold">파트너 대시보드</h1>
+                        <p class="text-muted mb-0">안녕하세요, <strong>{{ $user->name ?? $userInfo['name'] }}</strong>님! 파트너 활동 현황을 확인하세요.</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <span class="badge bg-primary fs-6" id="partner-tier">
+                            <i class="fe fe-award me-1"></i>{{ $partner->partnerTier->tier_name ?? '기본 티어' }}
                         </span>
-                    </p>
-                    <p class="text-sm">
-                        <span class="font-medium">하위 파트너:</span>
-                        <span id="children-count">{{ $networkInfo['children_count'] }}명</span>
-                    </p>
-                </div>
-            </div>
-
-            <!-- 매출 정보 -->
-            <div class="bg-green-50 rounded-lg p-4" id="sales-info">
-                <h3 class="text-sm font-medium text-green-700 mb-2">매출 정보</h3>
-                <div class="space-y-1">
-                    <p class="text-sm">
-                        <span class="font-medium">이번 달:</span>
-                        <span id="monthly-sales" class="font-bold text-green-600">
-                            {{ number_format($salesStats['current_month_sales']) }}원
+                        <span class="badge bg-success fs-6" id="partner-type">
+                            <i class="fe fe-tag me-1"></i>{{ $partner->partnerType->type_name ?? '기본 타입' }}
                         </span>
-                    </p>
-                    <p class="text-sm">
-                        <span class="font-medium">총 매출:</span>
-                        <span id="total-sales" class="font-bold">
-                            {{ number_format($salesStats['total_sales']) }}원
+                        <span class="badge bg-info fs-6">
+                            <i class="fe fe-activity me-1"></i>활성 상태
                         </span>
-                    </p>
-                    <p class="text-sm">
-                        <span class="font-medium">팀 매출:</span>
-                        <span id="team-sales" class="font-bold">
-                            {{ number_format($salesStats['team_sales']) }}원
-                        </span>
-                    </p>
-                </div>
-            </div>
-
-            <!-- 커미션 정보 -->
-            <div class="bg-yellow-50 rounded-lg p-4" id="commission-info">
-                <h3 class="text-sm font-medium text-yellow-700 mb-2">커미션 정보</h3>
-                <div class="space-y-1">
-                    <p class="text-sm">
-                        <span class="font-medium">이번 달:</span>
-                        <span id="monthly-commission" class="font-bold text-yellow-600">
-                            {{ number_format($commissionStats['this_month_commission']) }}원
-                        </span>
-                    </p>
-                    <p class="text-sm">
-                        <span class="font-medium">총 커미션:</span>
-                        <span id="total-commission" class="font-bold">
-                            {{ number_format($commissionStats['total_commission']) }}원
-                        </span>
-                    </p>
-                    <p class="text-sm">
-                        <span class="font-medium">대기중:</span>
-                        <span id="pending-commission" class="font-bold text-orange-600">
-                            {{ number_format($commissionStats['pending_commission']) }}원
-                        </span>
-                    </p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- 최근 매출 기록 -->
-        <div class="bg-white rounded-lg shadow-md" id="recent-sales-section">
-            <div class="p-6 border-b border-gray-200">
-                <h2 class="text-lg font-semibold text-gray-800">최근 매출 기록</h2>
-            </div>
-            <div class="p-6">
-                @if($recentSales->count() > 0)
-                    <div class="space-y-4" id="sales-records">
-                        @foreach($recentSales as $sale)
-                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg sales-record"
-                             data-sale-id="{{ $sale->id }}">
-                            <div>
-                                <p class="font-medium text-gray-800 sales-title">{{ $sale->title }}</p>
-                                <p class="text-sm text-gray-500 sales-date">{{ $sale->sales_date }}</p>
-                                <p class="text-sm sales-category">{{ $sale->category }} - {{ $sale->product_type }}</p>
+    <!-- Partner Info Summary Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-primary text-white">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h4 class="text-white mb-2">
+                                <i class="fe fe-user me-2"></i>파트너 정보
+                            </h4>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <p class="mb-1"><strong>이름:</strong> {{ $user->name ?? $userInfo['name'] }}</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <p class="mb-1"><strong>이메일:</strong> {{ $user->email ?? $userInfo['email'] }}</p>
+                                </div>
+                                <div class="col-md-2">
+                                    <p class="mb-1"><strong>레벨:</strong> {{ $networkInfo['level'] }}</p>
+                                </div>
+                                <div class="col-md-3">
+                                    <p class="mb-1"><strong>가입일:</strong> {{ $partner->created_at->format('Y-m-d') }}</p>
+                                </div>
                             </div>
-                            <div class="text-right">
-                                <p class="font-bold text-green-600 sales-amount">
-                                    {{ number_format($sale->amount) }}원
-                                </p>
-                                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full sales-status
-                                    @if($sale->status === 'confirmed') bg-green-100 text-green-800
-                                    @elseif($sale->status === 'pending') bg-yellow-100 text-yellow-800
-                                    @else bg-gray-100 text-gray-800 @endif">
-                                    {{ $sale->status }}
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="avatar avatar-xl">
+                                <div class="avatar-img rounded-circle bg-light text-primary d-flex align-items-center justify-content-center">
+                                    <i class="fe fe-user display-6"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <!-- Network Information -->
+        <div class="col-xl-3 col-lg-6 col-md-12 col-12">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ $networkInfo['children_count'] }}</h4>
+                            <p class="mb-0">하위 파트너</p>
+                            <small class="text-muted">
+                                상위: {{ $networkInfo['parent_partner']->name ?? '없음' }}
+                            </small>
+                        </div>
+                        <div class="icon-shape icon-md bg-info text-white rounded-circle">
+                            <i class="fe fe-users"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sales Information -->
+        <div class="col-xl-3 col-lg-6 col-md-12 col-12">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ number_format($salesStats['current_month_sales']) }}원</h4>
+                            <p class="mb-0">이번 달 매출</p>
+                            <small class="text-muted">
+                                총 매출: {{ number_format($salesStats['total_sales']) }}원
+                            </small>
+                        </div>
+                        <div class="icon-shape icon-md bg-success text-white rounded-circle">
+                            <i class="fe fe-trending-up"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Commission Information -->
+        <div class="col-xl-3 col-lg-6 col-md-12 col-12">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ number_format($commissionStats['this_month_commission']) }}원</h4>
+                            <p class="mb-0">이번 달 커미션</p>
+                            <small class="text-muted">
+                                총 커미션: {{ number_format($commissionStats['total_commission']) }}원
+                            </small>
+                        </div>
+                        <div class="icon-shape icon-md bg-warning text-white rounded-circle">
+                            <i class="fe fe-dollar-sign"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Commission -->
+        <div class="col-xl-3 col-lg-6 col-md-12 col-12">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ number_format($commissionStats['pending_commission']) }}원</h4>
+                            <p class="mb-0">대기 중 커미션</p>
+                            <small class="text-muted">
+                                총 {{ $commissionStats['commission_count'] }}건
+                            </small>
+                        </div>
+                        <div class="icon-shape icon-md bg-secondary text-white rounded-circle">
+                            <i class="fe fe-clock"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activities -->
+    <div class="row mb-4">
+        <!-- Recent Sales Records -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">최근 매출 기록</h4>
+                    <a href="{{ route('home.partner.sales.index') }}" class="btn btn-outline-primary btn-sm">
+                        전체 보기
+                    </a>
+                </div>
+                <div class="card-body">
+                    @if($recentSales->count() > 0)
+                        @foreach($recentSales as $sale)
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3 sales-record" data-sale-id="{{ $sale->id }}">
+                            <div>
+                                <h6 class="mb-1 sales-title">{{ $sale->title ?? '매출' }}</h6>
+                                <p class="text-muted mb-1 sales-date">{{ $sale->sales_date ? date('Y-m-d', strtotime($sale->sales_date)) : $sale->created_at->format('Y-m-d') }}</p>
+                                <small class="sales-category">{{ $sale->category ?? '일반' }} - {{ $sale->product_type ?? '상품' }}</small>
+                            </div>
+                            <div class="text-end">
+                                <h6 class="mb-1 text-success sales-amount">{{ number_format($sale->amount) }}원</h6>
+                                <span class="badge bg-{{ $sale->status === 'confirmed' ? 'success' : ($sale->status === 'pending' ? 'warning' : 'secondary') }} sales-status">
+                                    {{ $sale->status === 'confirmed' ? '확정' : ($sale->status === 'pending' ? '대기' : '기타') }}
                                 </span>
                             </div>
                         </div>
                         @endforeach
-                    </div>
-                @else
-                    <p class="text-gray-500 text-center py-8" id="no-sales-message">아직 매출 기록이 없습니다.</p>
-                @endif
+                    @else
+                        <div class="text-center py-4">
+                            <i class="fe fe-bar-chart display-4 text-muted"></i>
+                            <p class="text-muted mt-2">아직 매출 기록이 없습니다.</p>
+                        </div>
+                    @endif
+                </div>
             </div>
         </div>
 
-        <!-- 하위 파트너 정보 -->
-        <div class="bg-white rounded-lg shadow-md" id="sub-partners-section">
-            <div class="p-6 border-b border-gray-200">
-                <h2 class="text-lg font-semibold text-gray-800">하위 파트너</h2>
-            </div>
-            <div class="p-6">
-                @if($subPartners->count() > 0)
-                    <div class="space-y-4" id="sub-partners-list">
+        <!-- Sub Partners -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">하위 파트너</h4>
+                    <span class="badge bg-info">{{ $networkInfo['children_count'] }}명</span>
+                </div>
+                <div class="card-body">
+                    @if($subPartners->count() > 0)
                         @foreach($subPartners as $subPartner)
-                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg sub-partner"
-                             data-partner-id="{{ $subPartner->id }}">
-                            <div>
-                                <p class="font-medium text-gray-800 sub-partner-name">{{ $subPartner->name }}</p>
-                                <p class="text-sm text-gray-500 sub-partner-email">{{ $subPartner->email }}</p>
-                                <div class="flex space-x-2 mt-1">
-                                    <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded sub-partner-tier">
-                                        {{ $subPartner->partnerTier->tier_name ?? '미설정' }}
+                        <div class="d-flex align-items-center mb-3 sub-partner" data-partner-id="{{ $subPartner->id }}">
+                            <div class="avatar avatar-sm me-3">
+                                <div class="avatar-img rounded-circle bg-primary text-white d-flex align-items-center justify-content-center">
+                                    {{ mb_substr($subPartner->name, 0, 1, 'UTF-8') }}
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0 sub-partner-name">{{ $subPartner->name }}</h6>
+                                <small class="text-muted sub-partner-email">{{ $subPartner->email }}</small>
+                                <div class="d-flex gap-1 mt-1">
+                                    <span class="badge bg-primary sub-partner-tier" style="font-size: 0.7rem;">
+                                        {{ $subPartner->partnerTier->tier_name ?? '기본' }}
                                     </span>
-                                    <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded sub-partner-type">
-                                        {{ $subPartner->partnerType->type_name ?? '미설정' }}
+                                    <span class="badge bg-success sub-partner-type" style="font-size: 0.7rem;">
+                                        {{ $subPartner->partnerType->type_name ?? '일반' }}
                                     </span>
                                 </div>
                             </div>
-                            <div class="text-right">
-                                <p class="text-sm text-gray-600 sub-partner-monthly-sales">
-                                    월 매출: {{ number_format($subPartner->monthly_sales ?? 0) }}원
-                                </p>
-                                <p class="text-sm text-gray-600 sub-partner-total-sales">
-                                    총 매출: {{ number_format($subPartner->total_sales ?? 0) }}원
-                                </p>
+                            <div class="text-end">
+                                <small class="text-muted d-block sub-partner-monthly-sales">
+                                    월: {{ number_format($subPartner->monthly_sales ?? 0) }}원
+                                </small>
+                                <small class="text-muted sub-partner-total-sales">
+                                    총: {{ number_format($subPartner->total_sales ?? 0) }}원
+                                </small>
                             </div>
                         </div>
                         @endforeach
-                    </div>
-                @else
-                    <p class="text-gray-500 text-center py-8" id="no-sub-partners-message">아직 하위 파트너가 없습니다.</p>
-                @endif
+                    @else
+                        <div class="text-center py-4">
+                            <i class="fe fe-users display-4 text-muted"></i>
+                            <p class="text-muted mt-2 small">아직 하위 파트너가 없습니다.</p>
+                        </div>
+                    @endif
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- 추가 통계 정보 -->
-    <div class="bg-white rounded-lg shadow-md mt-6 p-6" id="additional-stats">
-        <h2 class="text-lg font-semibold text-gray-800 mb-4">상세 통계</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="text-center p-4 bg-blue-50 rounded-lg">
-                <p class="text-2xl font-bold text-blue-600" id="total-sales-count">{{ $salesStats['total_sales_count'] }}</p>
-                <p class="text-sm text-blue-700">총 거래 건수</p>
+    <!-- Additional Statistics -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">상세 통계</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center">
+                            <div class="p-4 bg-light rounded">
+                                <h2 class="text-primary mb-2" id="total-sales-count">{{ $salesStats['total_sales_count'] }}</h2>
+                                <p class="mb-0 text-muted">총 거래 건수</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="p-4 bg-light rounded">
+                                <h2 class="text-success mb-2" id="current-year-sales">
+                                    {{ number_format($salesStats['current_year_sales']) }}원
+                                </h2>
+                                <p class="mb-0 text-muted">올해 매출</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="p-4 bg-light rounded">
+                                <h2 class="text-warning mb-2" id="commission-count">{{ $commissionStats['commission_count'] }}</h2>
+                                <p class="mb-0 text-muted">커미션 건수</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="text-center p-4 bg-green-50 rounded-lg">
-                <p class="text-2xl font-bold text-green-600" id="current-year-sales">
-                    {{ number_format($salesStats['current_year_sales']) }}원
-                </p>
-                <p class="text-sm text-green-700">올해 매출</p>
-            </div>
-            <div class="text-center p-4 bg-yellow-50 rounded-lg">
-                <p class="text-2xl font-bold text-yellow-600" id="commission-count">{{ $commissionStats['commission_count'] }}</p>
-                <p class="text-sm text-yellow-700">커미션 건수</p>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">빠른 작업</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="{{ route('home.partner.sales.index') }}" class="btn btn-outline-primary w-100">
+                                <i class="fe fe-trending-up me-2"></i>판매 현황 보기
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="{{ route('home.partner.commission.index') }}" class="btn btn-outline-success w-100">
+                                <i class="fe fe-dollar-sign me-2"></i>커미션 현황
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="{{ route('home.partner.reviews.index') }}" class="btn btn-outline-info w-100">
+                                <i class="fe fe-star me-2"></i>리뷰 관리
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="{{ route('home.partner.commission.calculate') }}" class="btn btn-outline-warning w-100">
+                                <i class="fe fe-calculator me-2"></i>수익 계산기
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+}
+
+.card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.icon-shape {
+    width: 3rem;
+    height: 3rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-md {
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+.avatar {
+    position: relative;
+    display: inline-block;
+}
+
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-sm {
+    width: 2rem;
+    height: 2rem;
+}
+
+.avatar-xl {
+    width: 4rem;
+    height: 4rem;
+}
+</style>
 @endsection

@@ -56,6 +56,9 @@ Route::middleware(['web', 'admin'])->prefix('admin')->name('admin.')->group(func
         Route::get('/', DashboardController::class)->name('index');
         Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
+        // 파트너 현황 대시보드
+        Route::get('/partner-dashboard', [\Jiny\Partner\Http\Controllers\Admin\PartnerDashboardController::class, 'index'])->name('partner-dashboard');
+
         // ====================================================================
         // CRUD Operations - 기본 CRUD 작업들 (기존 라우트 이름 유지)
         // ====================================================================
@@ -91,6 +94,7 @@ Route::middleware(['web', 'admin'])->prefix('admin')->name('admin.')->group(func
             Route::get('/{user}', PartnerUsersShowController::class)->name('show');
             Route::get('/{user}/edit', PartnerUsersEditController::class)->name('edit');
             Route::put('/{user}', PartnerUsersUpdateController::class)->name('update');
+            Route::patch('/{user}', PartnerUsersUpdateController::class)->name('patch');
             Route::delete('/{user}', PartnerUsersDestroyController::class)->name('destroy');
 
             // 계층구조 트리 보기
@@ -100,6 +104,18 @@ Route::middleware(['web', 'admin'])->prefix('admin')->name('admin.')->group(func
             Route::get('/search', PartnerUsersSearchController::class)->name('search');
             Route::get('/search/user-info', [PartnerUsersSearchController::class, 'getUserInfo'])->name('search.user-info');
             Route::get('/search/user-tables', [PartnerUsersSearchController::class, 'getUserTables'])->name('search.user-tables');
+
+            // 파트너 코드 관리 (웹 라우트)
+            Route::post('/{id}/partner-code/generate', [\Jiny\Partner\Http\Controllers\Admin\PartnerUsers\PartnerCodeController::class, 'generate'])->name('partner-code.generate');
+            Route::delete('/{id}/partner-code/delete', [\Jiny\Partner\Http\Controllers\Admin\PartnerUsers\PartnerCodeController::class, 'delete'])->name('partner-code.delete');
+        });
+
+        // 파트너 코드 전체 관리
+        Route::prefix('codes')->name('codes.')->group(function () {
+            Route::get('/', [\Jiny\Partner\Http\Controllers\Admin\PartnerCodes\IndexController::class, 'index'])->name('index');
+            Route::post('/bulk-generate', [\Jiny\Partner\Http\Controllers\Admin\PartnerCodes\BulkGenerateController::class, 'generate'])->name('bulk-generate');
+            Route::post('/bulk-delete', [\Jiny\Partner\Http\Controllers\Admin\PartnerCodes\BulkDeleteController::class, 'delete'])->name('bulk-delete');
+            Route::get('/statistics', [\Jiny\Partner\Http\Controllers\Admin\PartnerCodes\StatisticsController::class, 'index'])->name('statistics');
         });
 
         // 파트너 엔지니어 CRUD & Management (현재 미구현)
@@ -207,9 +223,14 @@ Route::middleware(['web', 'admin'])->prefix('admin')->name('admin.')->group(func
         // 파트너 지원서 관리 (Partner Application Management)
         // ====================================================================
         Route::prefix('applications')->name('applications.')->group(function () {
-            // 기본 CRUD
-            Route::get('/', \Jiny\Partner\Http\Controllers\Admin\PartnerApplication\IndexController::class)->name('index');
-            Route::get('/{id}', \Jiny\Partner\Http\Controllers\Admin\PartnerApplication\ShowController::class)->name('show');
+            // 기본 CRUD - 관리자가 직접 신청서 등록/수정할 수 있는 기능
+            Route::get('/', \Jiny\Partner\Http\Controllers\Admin\PartnerApplicationController::class . '@index')->name('index');
+            Route::get('/create', \Jiny\Partner\Http\Controllers\Admin\PartnerApplication\CreateController::class)->name('create');
+            Route::post('/', \Jiny\Partner\Http\Controllers\Admin\PartnerApplication\StoreController::class)->name('store');
+            Route::get('/{id}', \Jiny\Partner\Http\Controllers\Admin\PartnerApplicationController::class . '@show')->name('show');
+            Route::get('/{id}/edit', \Jiny\Partner\Http\Controllers\Admin\PartnerApplicationController::class . '@edit')->name('edit');
+            Route::put('/{id}', \Jiny\Partner\Http\Controllers\Admin\PartnerApplication\UpdateController::class)->name('update');
+            Route::delete('/{id}', \Jiny\Partner\Http\Controllers\Admin\PartnerApplication\DestroyController::class)->name('destroy');
 
             // 통계 및 리포트
             Route::get('/statistics', \Jiny\Partner\Http\Controllers\Admin\PartnerApplication\StatisticsController::class)->name('statistics');
@@ -219,7 +240,7 @@ Route::middleware(['web', 'admin'])->prefix('admin')->name('admin.')->group(func
             // 일괄 처리
             Route::post('/bulk-action', \Jiny\Partner\Http\Controllers\Admin\PartnerApplication\BulkActionController::class)->name('bulk-action');
 
-            // 개별 지원서 관리
+            // 개별 지원서 관리 (승인/거부 프로세스)
             Route::prefix('{id}')->group(function () {
                 Route::post('/approve', \Jiny\Partner\Http\Controllers\Admin\PartnerApplication\ApproveController::class)->name('approve');
                 Route::post('/reject', \Jiny\Partner\Http\Controllers\Admin\PartnerApplication\RejectController::class)->name('reject');
@@ -242,6 +263,7 @@ Route::middleware(['web', 'admin'])->prefix('admin')->name('admin.')->group(func
             Route::get('/{id}', \Jiny\Partner\Http\Controllers\Admin\PartnerApproval\ShowController::class)->name('show');
             Route::get('/{id}/documents', \Jiny\Partner\Http\Controllers\Admin\PartnerApproval\DocumentsController::class)->name('documents');
             Route::get('/{id}/referrer', \Jiny\Partner\Http\Controllers\Admin\PartnerApproval\ReferrerController::class)->name('referrer');
+            Route::delete('/{id}', \Jiny\Partner\Http\Controllers\Admin\PartnerApproval\DestroyController::class)->name('destroy');
 
             // 승인 프로세스 관리
             Route::post('/{id}/review', \Jiny\Partner\Http\Controllers\Admin\PartnerApproval\ReviewController::class)->name('review');
@@ -260,20 +282,48 @@ Route::middleware(['web', 'admin'])->prefix('admin')->name('admin.')->group(func
         });
 
         // ====================================================================
+        // 파트너 면접 관리 (Partner Interview Management)
+        // ====================================================================
+        Route::prefix('interview')->name('interview.')->group(function () {
+            // 기본 CRUD
+            Route::get('/', \Jiny\Partner\Http\Controllers\Admin\PartnerInterview\IndexController::class)->name('index');
+            Route::get('/create', \Jiny\Partner\Http\Controllers\Admin\PartnerInterview\CreateController::class)->name('create');
+            Route::post('/', \Jiny\Partner\Http\Controllers\Admin\PartnerInterview\StoreController::class)->name('store');
+            Route::get('/{id}', \Jiny\Partner\Http\Controllers\Admin\PartnerInterview\ShowController::class)->name('show');
+            Route::get('/{id}/edit', \Jiny\Partner\Http\Controllers\Admin\PartnerInterview\EditController::class)->name('edit');
+            Route::put('/{id}', \Jiny\Partner\Http\Controllers\Admin\PartnerInterview\UpdateController::class)->name('update');
+            Route::delete('/{id}', \Jiny\Partner\Http\Controllers\Admin\PartnerInterview\DestroyController::class)->name('destroy');
+
+            // 특정 신청서에 대한 면접 생성
+            Route::get('/application/{applicationId}/create', \Jiny\Partner\Http\Controllers\Admin\PartnerInterview\CreateController::class)->name('application.create');
+
+            // 면접 상태 관리
+            Route::post('/{id}/start', \Jiny\Partner\Http\Controllers\Admin\PartnerInterview\StatusController::class . '@start')->name('start');
+            Route::post('/{id}/complete', \Jiny\Partner\Http\Controllers\Admin\PartnerInterview\StatusController::class . '@complete')->name('complete');
+            Route::post('/{id}/cancel', \Jiny\Partner\Http\Controllers\Admin\PartnerInterview\StatusController::class . '@cancel')->name('cancel');
+            Route::post('/{id}/reschedule', \Jiny\Partner\Http\Controllers\Admin\PartnerInterview\StatusController::class . '@reschedule')->name('reschedule');
+
+            // 면접 평가 관리
+            Route::post('/{id}/evaluation', \Jiny\Partner\Http\Controllers\Admin\PartnerInterview\EvaluationController::class . '@store')->name('evaluation.store');
+            Route::put('/{id}/evaluation', \Jiny\Partner\Http\Controllers\Admin\PartnerInterview\EvaluationController::class . '@update')->name('evaluation.update');
+
+            // 통계 및 리포트
+            Route::get('/statistics', \Jiny\Partner\Http\Controllers\Admin\PartnerInterview\StatisticsController::class)->name('statistics');
+            Route::get('/calendar', \Jiny\Partner\Http\Controllers\Admin\PartnerInterview\CalendarController::class)->name('calendar');
+
+            // 일괄 처리
+            Route::post('/bulk-action', \Jiny\Partner\Http\Controllers\Admin\PartnerInterview\BulkActionController::class)->name('bulk-action');
+        });
+
+        // ====================================================================
         // 파트너 네트워크 관리 (Partner Network Management) - MLM 구조
         // ====================================================================
         Route::prefix('network')->name('network.')->group(function () {
 
-            // 네트워크 트리 구조 조회
-            Route::get('/tree', \Jiny\Partner\Http\Controllers\Admin\PartnerNetwork\TreeViewController::class)->name('tree');
+            // 네트워크 트리 구조 조회 (단계별 드릴다운)
+            Route::get('/tree', \Jiny\Partner\Http\Controllers\Admin\PartnerNetwork\TreeController::class . '@index')->name('tree');
+            Route::get('/tree/children/{partnerId}', \Jiny\Partner\Http\Controllers\Admin\PartnerNetwork\TreeController::class . '@children')->name('children');
 
-            // 파트너 모집 관리
-            Route::prefix('recruitment')->name('recruitment.')->group(function () {
-                Route::get('/', [\Jiny\Partner\Http\Controllers\Admin\PartnerNetwork\RecruitmentController::class, 'index'])->name('index');
-                Route::post('/recruit', [\Jiny\Partner\Http\Controllers\Admin\PartnerNetwork\RecruitmentController::class, 'recruit'])->name('recruit');
-                Route::post('/bulk-recruit', [\Jiny\Partner\Http\Controllers\Admin\PartnerNetwork\RecruitmentController::class, 'bulkRecruit'])->name('bulk-recruit');
-                Route::delete('/relationship/{id}', [\Jiny\Partner\Http\Controllers\Admin\PartnerNetwork\RecruitmentController::class, 'removeRelationship'])->name('remove-relationship');
-            });
 
             // 커미션 분배 관리
             Route::prefix('commission')->name('commission.')->group(function () {
@@ -298,29 +348,8 @@ Route::middleware(['web', 'admin'])->prefix('admin')->name('admin.')->group(func
                     ]);
                 })->name('performance');
 
-                Route::get('/genealogy', function() {
-                    return view('jiny-partner::admin.partner-network.analytics.genealogy', [
-                        'pageTitle' => '계보 분석'
-                    ]);
-                })->name('genealogy');
             });
 
-            // 계층별 관리 도구
-            Route::prefix('hierarchy')->name('hierarchy.')->group(function () {
-                Route::get('/management', function() {
-                    return view('jiny-partner::admin.partner-network.hierarchy.management', [
-                        'pageTitle' => '계층 관리'
-                    ]);
-                })->name('management');
-
-                Route::post('/move-partner', function() {
-                    // 파트너 이동 로직
-                })->name('move-partner');
-
-                Route::post('/restructure', function() {
-                    // 구조 재편 로직
-                })->name('restructure');
-            });
 
         });
 

@@ -2,13 +2,13 @@
 
 namespace Jiny\Partner\Http\Controllers\Home\Search;
 
-use Jiny\Partner\Http\Controllers\Home\HomeController;
+use Jiny\Partner\Http\Controllers\PartnerController;
 use Jiny\Partner\Models\PartnerUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class ReferrerController extends HomeController
+class ReferrerController extends PartnerController
 {
     /**
      * 이메일로 추천인 검색
@@ -16,8 +16,14 @@ class ReferrerController extends HomeController
      */
     public function __invoke(Request $request)
     {
+        // 사용자 인증 (파트너 필수는 아님)
+        $authResult = $this->authenticateUser($request, 'referrer_search');
+        if (!$authResult['success']) {
+            return $authResult['redirect'];
+        }
+
         $email = $request->get('email', '');
-        $format = $request->get('format', 'json');
+        $format = $request->get('format', 'html');
 
         if (empty($email)) {
             if ($format === 'json') {
@@ -28,7 +34,10 @@ class ReferrerController extends HomeController
                 ]);
             }
 
-            return back()->withErrors(['email' => '이메일을 입력해주세요.']);
+            // HTML 요청에서 이메일이 없으면 검색 폼 표시
+            return view('jiny-partner::home.search.referrer', [
+                'pageTitle' => '추천인 검색'
+            ]);
         }
 
         // 이메일 형식 검증
@@ -127,24 +136,56 @@ class ReferrerController extends HomeController
             ];
         }
 
-        // user_auth 테이블에서도 검색 시도
-        $userAuth = DB::table('user_auth')
-            ->where('email', $email)
-            ->first();
-
-        if ($userAuth) {
-            // 추가 정보를 위해 user_profile 조회
-            $additionalInfo = DB::table('user_profile')
-                ->where('user_uuid', $userAuth->user_uuid)
+        // user_auth 테이블이 존재하는 경우에만 검색 시도
+        try {
+            $userAuth = DB::table('user_auth')
+                ->where('email', $email)
                 ->first();
 
-            return [
-                'user_uuid' => $userAuth->user_uuid,
-                'shard_id' => $additionalInfo->shard_id ?? null,
-                'name' => $additionalInfo->name ?? $userAuth->name ?? 'Unknown',
-                'email' => $email,
-                'source_table' => 'user_auth'
-            ];
+            if ($userAuth) {
+                // 추가 정보를 위해 user_profile 조회
+                $additionalInfo = DB::table('user_profile')
+                    ->where('user_uuid', $userAuth->user_uuid)
+                    ->first();
+
+                return [
+                    'user_uuid' => $userAuth->user_uuid,
+                    'shard_id' => $additionalInfo->shard_id ?? null,
+                    'name' => $additionalInfo->name ?? $userAuth->name ?? 'Unknown',
+                    'email' => $email,
+                    'source_table' => 'user_auth'
+                ];
+            }
+        } catch (\Exception $e) {
+            // user_auth 테이블이 없거나 접근할 수 없음
+            Log::debug("user_auth table not accessible: " . $e->getMessage());
+        }
+
+        // 샤딩된 users_xxx 테이블에서 검색 시도
+        $shardedTables = $this->getShardedUserTables();
+
+        foreach ($shardedTables as $tableName) {
+            try {
+                $user = DB::table($tableName)
+                    ->where('email', $email)
+                    ->whereNull('deleted_at')
+                    ->first();
+
+                if ($user) {
+                    return [
+                        'user_uuid' => $user->uuid ?? null,
+                        'shard_id' => null, // 샤딩된 테이블에서는 shard_id 없음
+                        'name' => $user->name ?? 'Unknown',
+                        'email' => $email,
+                        'source_table' => $tableName
+                    ];
+                }
+            } catch (\Exception $e) {
+                Log::debug("Could not search in sharded table {$tableName}", [
+                    'error' => $e->getMessage()
+                ]);
+                continue;
+            }
         }
 
         // 다른 user_xxx 테이블들에서도 검색 시도
@@ -178,11 +219,54 @@ class ReferrerController extends HomeController
     }
 
     /**
+     * 샤딩된 사용자 테이블 목록 조회
+     */
+    private function getShardedUserTables(): array
+    {
+        try {
+            $tableNames = [];
+            $databaseDriver = DB::getDriverName();
+
+            if ($databaseDriver === 'sqlite') {
+                $tables = DB::select("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'users_%'");
+                foreach ($tables as $table) {
+                    $tableName = $table->name;
+                    if (preg_match('/^users_\d{3}$/', $tableName)) {
+                        $tableNames[] = $tableName;
+                    }
+                }
+            } else {
+                $tables = DB::select("SHOW TABLES LIKE 'users_%'");
+                foreach ($tables as $table) {
+                    $tableName = array_values((array)$table)[0];
+                    if (preg_match('/^users_\d{3}$/', $tableName)) {
+                        $tableNames[] = $tableName;
+                    }
+                }
+            }
+
+            sort($tableNames);
+
+            if (empty($tableNames)) {
+                // 실제 존재하는 테이블만 반환
+                return ['users_001', 'users_002']; // fallback
+            }
+
+            return $tableNames;
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get sharded user tables: ' . $e->getMessage());
+            return ['users_001', 'users_002']; // fallback
+        }
+    }
+
+    /**
      * 사용 가능한 user_xxx 테이블 목록 조회
      */
     private function getUserTablesList(): array
     {
-        return [
+        $availableTables = [];
+        $tables = [
             'user_profile',
             'user_auth',
             'user_admin',
@@ -191,6 +275,19 @@ class ReferrerController extends HomeController
             'user_address',
             'user_social'
         ];
+
+        foreach ($tables as $table) {
+            try {
+                // 테이블 존재 여부 확인
+                DB::table($table)->limit(1)->get();
+                $availableTables[] = $table;
+            } catch (\Exception $e) {
+                // 테이블이 존재하지 않음
+                Log::debug("Table {$table} not available: " . $e->getMessage());
+            }
+        }
+
+        return $availableTables;
     }
 
     /**

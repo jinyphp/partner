@@ -2,275 +2,139 @@
 
 namespace Jiny\Partner\Http\Controllers\Home\PartnerApproval;
 
-use Jiny\Partner\Http\Controllers\Home\HomeController;
+use Jiny\Auth\Http\Controllers\HomeController;
 use Jiny\Partner\Models\PartnerApplication;
 use Jiny\Partner\Models\PartnerUser;
-use Jiny\Partner\Models\PartnerTier;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class IndexController extends HomeController
 {
     /**
-     * 상위 파트너 승인 대시보드
-     * 파트너 등급에 따른 제한적 승인 권한 제공
+     * 파트너 승인 관리 대시보드
+     * 나의 파트너 코드로 신청된 파트너 목록 표시
      */
     public function __invoke(Request $request)
     {
-        // JWT 인증 확인
+        // Step1. JWT 인증 확인 (HomeController의 auth 메서드 사용)
         $user = $this->auth($request);
         if (!$user) {
             return redirect()->route('login')
-                ->with('error', 'JWT 인증이 필요합니다. 로그인해 주세요.');
+                ->with('error', 'JWT 인증이 필요합니다. 로그인해 주세요.')
+                ->with('info', '파트너 서비스는 로그인 후 이용하실 수 있습니다.');
         }
 
-        // 파트너 정보 조회
-        $partner = PartnerUser::where('user_uuid', $user->uuid)->first();
-        if (!$partner) {
-            return redirect()->route('home.partner.regist.index')
-                ->with('error', '파트너 등록이 필요합니다.')
-                ->with('info', '파트너 신청을 먼저 진행해 주세요.');
+        Log::info('Partner approval access', [
+            'user_id' => $user->id,
+            'user_uuid' => $user->uuid,
+            'user_email' => $user->email
+        ]);
+
+        // Step2. 나의 파트너 정보 확인
+        $myPartner = PartnerUser::with(['partnerTier', 'partnerType'])
+            ->where('user_uuid', $user->uuid)
+            ->first();
+
+        // 파트너 미등록시 intro로 리다이렉션
+        if (!$myPartner) {
+            return redirect()->route('home.partner.intro')
+                ->with('info', '파트너 프로그램에 가입하시면 파트너 관리 기능을 이용하실 수 있습니다.')
+                ->with('userInfo', [
+                    'name' => $user->name ?? '',
+                    'email' => $user->email ?? '',
+                    'phone' => $user->profile->phone ?? '',
+                    'uuid' => $user->uuid
+                ]);
         }
 
-        // 승인 권한 확인
-        $approvalPermissions = $this->getApprovalPermissions($partner);
-        if (!$approvalPermissions['can_approve']) {
-            return redirect()->route('home.partner.index')
-                ->with('error', '승인 권한이 없습니다.')
-                ->with('info', $approvalPermissions['reason']);
-        }
+        // Step3. 나의 파트너 코드로 신청된 파트너들 조회
+        $partnersAppliedWithMyCode = $this->getPartnersAppliedWithMyCode($myPartner);
 
-        // 대시보드 데이터 수집
-        $dashboardData = $this->getDashboardData($partner, $approvalPermissions);
+        // Step4. 승인 대기 중인 신청서들 조회
+        $pendingApplications = $this->getApplicationsWithMyCode($myPartner);
 
         return view('jiny-partner::home.partner-approval.index', [
-            'partner' => $partner,
-            'permissions' => $approvalPermissions,
-            'dashboard' => $dashboardData,
+            'user' => $user,
+            'myPartner' => $myPartner,
+            'partnersAppliedWithMyCode' => $partnersAppliedWithMyCode,
+            'pendingApplications' => $pendingApplications,
             'pageTitle' => '파트너 승인 관리'
         ]);
     }
 
     /**
-     * 파트너 등급별 승인 권한 확인
+     * 나의 파트너 코드로 신청된 파트너들 조회
      */
-    private function getApprovalPermissions(PartnerUser $partner): array
+    private function getPartnersAppliedWithMyCode(PartnerUser $myPartner)
     {
-        $tierName = $partner->tier_name ?? 'Bronze';
-        $currentApprovals = $this->getCurrentMonthApprovals($partner);
-        $totalManaging = $this->getTotalManagedPartners($partner);
+        // 방법 1: profile_data에서 referrer_info로 검색
+        $partnersFromProfile = PartnerUser::with(['partnerTier', 'partnerType'])
+            ->whereJsonContains('profile_data->referrer_info->referrer_code', $myPartner->partner_code)
+            ->get();
 
-        // 등급별 권한 매트릭스
-        $permissions = [
-            'Bronze' => [
-                'can_approve' => false,
-                'reason' => 'Bronze 파트너는 승인 권한이 없습니다. Silver 등급 이상부터 가능합니다.',
-                'approvable_tiers' => [],
-                'monthly_limit' => 0,
-                'max_managing' => 0,
-                'approvable_types' => []
-            ],
-            'Silver' => [
-                'can_approve' => true,
-                'reason' => '',
-                'approvable_tiers' => ['Bronze'],
-                'monthly_limit' => 2,
-                'max_managing' => 5,
-                'approvable_types' => [$partner->type_name]
-            ],
-            'Gold' => [
-                'can_approve' => true,
-                'reason' => '',
-                'approvable_tiers' => ['Bronze', 'Silver'],
-                'monthly_limit' => 5,
-                'max_managing' => 15,
-                'approvable_types' => [$partner->type_name, 'additional_type']
-            ],
-            'Platinum' => [
-                'can_approve' => true,
-                'reason' => '',
-                'approvable_tiers' => ['Bronze', 'Silver', 'Gold'],
-                'monthly_limit' => 15,
-                'max_managing' => 50,
-                'approvable_types' => ['all']
-            ]
-        ];
-
-        $basePermission = $permissions[$tierName] ?? $permissions['Bronze'];
-
-        // 현재 상태 체크
-        $canApproveNow = $basePermission['can_approve'] &&
-                        $currentApprovals < $basePermission['monthly_limit'] &&
-                        $totalManaging < $basePermission['max_managing'];
-
-        if (!$canApproveNow && $basePermission['can_approve']) {
-            if ($currentApprovals >= $basePermission['monthly_limit']) {
-                $basePermission['reason'] = "이번 달 승인 한도({$basePermission['monthly_limit']}명)에 도달했습니다.";
-            } elseif ($totalManaging >= $basePermission['max_managing']) {
-                $basePermission['reason'] = "최대 관리 가능 파트너 수({$basePermission['max_managing']}명)에 도달했습니다.";
-            }
-        }
-
-        return array_merge($basePermission, [
-            'can_approve_now' => $canApproveNow,
-            'current_month_approvals' => $currentApprovals,
-            'remaining_monthly' => max(0, $basePermission['monthly_limit'] - $currentApprovals),
-            'total_managing' => $totalManaging,
-            'remaining_capacity' => max(0, $basePermission['max_managing'] - $totalManaging)
-        ]);
-    }
-
-    /**
-     * 이번 달 승인 수 조회
-     */
-    private function getCurrentMonthApprovals(PartnerUser $partner): int
-    {
-        return PartnerApplication::where('approved_by_uuid', $partner->user_uuid)
+        // 방법 2: 신청서를 통해 간접적으로 검색
+        $partnerIdsFromApplications = PartnerApplication::where('referrer_partner_id', $myPartner->id)
             ->where('application_status', 'approved')
-            ->whereMonth('approval_date', now()->month)
-            ->whereYear('approval_date', now()->year)
-            ->count();
-    }
+            ->pluck('user_uuid');
 
-    /**
-     * 현재 관리 중인 파트너 수 조회
-     */
-    private function getTotalManagedPartners(PartnerUser $partner): int
-    {
-        return PartnerUser::where('referrer_uuid', $partner->user_uuid)
-            ->where('status', 'active')
-            ->count();
-    }
+        $partnersFromApplications = PartnerUser::with(['partnerTier', 'partnerType'])
+            ->whereIn('user_uuid', $partnerIdsFromApplications)
+            ->get();
 
-    /**
-     * 대시보드 데이터 수집
-     */
-    private function getDashboardData(PartnerUser $partner, array $permissions): array
-    {
-        $data = [
-            'pending_applications' => 0,
-            'recent_activities' => [],
-            'managed_partners' => [],
-            'statistics' => [],
-            'pending_by_tier' => []
-        ];
+        // 두 결과 합치고 중복 제거
+        $allPartners = $partnersFromProfile->merge($partnersFromApplications)->unique('id');
 
-        if (!$permissions['can_approve']) {
-            return $data;
-        }
-
-        // 승인 대기 중인 신청서 수 (권한 범위 내)
-        $pendingQuery = PartnerApplication::whereIn('application_status', ['submitted', 'reviewing'])
-            ->where(function ($query) use ($partner) {
-                // 추천인이 현재 파트너인 경우 또는 하위 파트너의 추천
-                $query->whereJsonContains('referral_details->referrer_uuid', $partner->user_uuid)
-                    ->orWhereHas('referrer', function ($subQuery) use ($partner) {
-                        $subQuery->where('referrer_uuid', $partner->user_uuid);
-                    });
+        return $allPartners->sortByDesc('partner_joined_at')
+            ->map(function($partner) {
+                return [
+                    'id' => $partner->id,
+                    'name' => $partner->name,
+                    'email' => $partner->email,
+                    'partner_code' => $partner->partner_code,
+                    'tier_name' => $partner->partnerTier->tier_name ?? 'Bronze',
+                    'type_name' => $partner->partnerType->type_name ?? 'General',
+                    'status' => $partner->status,
+                    'joined_at' => $partner->partner_joined_at,
+                    'total_sales' => $partner->total_sales ?? 0,
+                    'monthly_sales' => $partner->monthly_sales ?? 0,
+                    'earned_commissions' => $partner->earned_commissions ?? 0,
+                    'children_count' => $partner->children_count ?? 0,
+                    'last_activity_at' => $partner->last_activity_at
+                ];
             });
+    }
 
-        $data['pending_applications'] = $pendingQuery->count();
-
-        // 등급별 대기 현황
-        if ($permissions['approvable_tiers']) {
-            foreach ($permissions['approvable_tiers'] as $tier) {
-                $data['pending_by_tier'][$tier] = (clone $pendingQuery)
-                    ->whereJsonContains('application_preferences->target_tier', $tier)
-                    ->count();
-            }
-        }
-
-        // 최근 활동 (승인/거부 기록)
-        $data['recent_activities'] = PartnerApplication::where('approved_by_uuid', $partner->user_uuid)
-            ->orWhere('rejected_by_uuid', $partner->user_uuid)
-            ->with(['user'])
-            ->orderBy('updated_at', 'desc')
-            ->limit(10)
+    /**
+     * 나의 파트너 코드로 신청된 신청서들 조회 (승인 대기 및 승인 완료 포함)
+     */
+    private function getApplicationsWithMyCode(PartnerUser $myPartner)
+    {
+        return PartnerApplication::whereIn('application_status', ['submitted', 'reviewing', 'interview', 'approved'])
+            ->where(function ($query) use ($myPartner) {
+                // referrer_partner_id 또는 referral_code 검색
+                $query->where('referrer_partner_id', $myPartner->id)
+                      ->orWhere('referral_code', $myPartner->partner_code)
+                      ->orWhereJsonContains('referral_details->referrer_code', $myPartner->partner_code);
+            })
+            ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function ($application) {
+            ->map(function($application) {
                 return [
                     'id' => $application->id,
                     'applicant_name' => $application->personal_info['name'] ?? 'Unknown',
-                    'action' => $application->application_status === 'approved' ? '승인' : '거부',
-                    'date' => $application->updated_at,
-                    'tier' => $application->application_preferences['target_tier'] ?? 'Bronze'
+                    'email' => $application->personal_info['email'] ?? '',
+                    'phone' => $application->personal_info['phone'] ?? '',
+                    'application_status' => $application->application_status,
+                    'target_tier' => $application->expected_tier_level ?? 'Bronze',
+                    'submitted_at' => $application->submitted_at ?? $application->created_at,
+                    'completeness_score' => $application->getCompletenessScore(),
+                    'experience_years' => $application->experience_info['total_years'] ?? 0,
+                    'skills_count' => count($application->skills_info['skills'] ?? []),
+                    'documents_count' => count($application->documents ?? []),
+                    'referral_source' => $application->referral_source ?? '',
+                    'meeting_date' => $application->meeting_date ?? null,
+                    'motivation' => $application->motivation ?? '',
                 ];
             });
-
-        // 관리 중인 파트너 목록
-        $data['managed_partners'] = PartnerUser::where('referrer_uuid', $partner->user_uuid)
-            ->where('status', 'active')
-            ->orderBy('joined_at', 'desc')
-            ->limit(10)
-            ->get()
-            ->map(function ($managedPartner) {
-                return [
-                    'user_uuid' => $managedPartner->user_uuid,
-                    'name' => $managedPartner->name ?? 'Unknown',
-                    'tier' => $managedPartner->tier_name,
-                    'type' => $managedPartner->type_name,
-                    'joined_at' => $managedPartner->joined_at,
-                    'performance_score' => $this->calculatePerformanceScore($managedPartner)
-                ];
-            });
-
-        // 통계 데이터
-        $data['statistics'] = [
-            'total_approved' => PartnerApplication::where('approved_by_uuid', $partner->user_uuid)
-                ->where('application_status', 'approved')
-                ->count(),
-            'total_rejected' => PartnerApplication::where('rejected_by_uuid', $partner->user_uuid)
-                ->where('application_status', 'rejected')
-                ->count(),
-            'approval_rate' => $this->calculateApprovalRate($partner),
-            'avg_processing_days' => $this->calculateAvgProcessingDays($partner)
-        ];
-
-        return $data;
-    }
-
-    /**
-     * 파트너 성과 점수 계산 (임시 구현)
-     */
-    private function calculatePerformanceScore(PartnerUser $partner): int
-    {
-        // 향후 실제 성과 데이터를 기반으로 계산
-        // 현재는 임시로 랜덤 점수 반환
-        return rand(70, 95);
-    }
-
-    /**
-     * 승인율 계산
-     */
-    private function calculateApprovalRate(PartnerUser $partner): float
-    {
-        $totalProcessed = PartnerApplication::where('approved_by_uuid', $partner->user_uuid)
-            ->whereIn('application_status', ['approved', 'rejected'])
-            ->count();
-
-        if ($totalProcessed === 0) {
-            return 0.0;
-        }
-
-        $approved = PartnerApplication::where('approved_by_uuid', $partner->user_uuid)
-            ->where('application_status', 'approved')
-            ->count();
-
-        return round(($approved / $totalProcessed) * 100, 1);
-    }
-
-    /**
-     * 평균 처리 시간 계산 (일)
-     */
-    private function calculateAvgProcessingDays(PartnerUser $partner): float
-    {
-        $avgDays = PartnerApplication::where('approved_by_uuid', $partner->user_uuid)
-            ->whereIn('application_status', ['approved', 'rejected'])
-            ->whereNotNull('approval_date')
-            ->orWhereNotNull('rejection_date')
-            ->select(DB::raw('AVG(julianday(COALESCE(approval_date, rejection_date)) - julianday(created_at)) as avg_days'))
-            ->value('avg_days');
-
-        return $avgDays ? round($avgDays, 1) : 0.0;
     }
 }

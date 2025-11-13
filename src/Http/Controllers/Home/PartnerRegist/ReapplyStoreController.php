@@ -8,8 +8,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 
-use Jiny\Auth\Http\Controllers\HomeController;
-class ReapplyStoreController extends HomeController
+use Jiny\Partner\Http\Controllers\PartnerController;
+//use Jiny\Auth\Http\Controllers\HomeController;
+class ReapplyStoreController extends PartnerController
 {
 
     /**

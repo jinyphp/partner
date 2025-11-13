@@ -9,8 +9,9 @@ use Illuminate\Http\Request;
 //use Illuminate\Support\Facades\Auth;
 //use Jiny\Auth\Http\Controllers\Traits\JWTAuthTrait;
 
-use Jiny\Auth\Http\Controllers\HomeController;
-class EditController extends HomeController
+use Jiny\Partner\Http\Controllers\PartnerController;
+//use Jiny\Auth\Http\Controllers\HomeController;
+class EditController extends PartnerController
 {
 
     /**
@@ -32,7 +33,7 @@ class EditController extends HomeController
             ->firstOrFail();
 
         // Step3. 수정 가능한 상태인지 확인
-        if (!in_array($application->application_status, ['draft', 'rejected'])) {
+        if (!in_array($application->application_status, ['draft', 'submitted', 'rejected'])) {
             return redirect()->route('home.partner.regist.status', $application->id)
                 ->with('error', '현재 상태에서는 신청서를 수정할 수 없습니다.');
         }

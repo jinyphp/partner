@@ -13,10 +13,16 @@
                     <p class="text-muted mb-0">지원자: {{ $item->personal_info['name'] ?? $item->user->name ?? 'Unknown' }}</p>
                 </div>
                 <div>
+                    <a href="{{ route('admin.partner.applications.edit', $item->id) }}" class="btn btn-primary me-2">
+                        <i class="fe fe-edit me-2"></i>수정
+                    </a>
+                    <button type="button" class="btn btn-danger me-2" onclick="confirmDelete({{ $item->id }}, '{{ $item->personal_info['name'] ?? $item->user->name ?? 'Unknown' }}')">
+                        <i class="fe fe-trash-2 me-2"></i>삭제
+                    </button>
                     <a href="{{ route('admin.partner.applications.index') }}" class="btn btn-outline-secondary me-2">
                         <i class="fe fe-arrow-left me-2"></i>목록으로
                     </a>
-                    <a href="{{ route('admin.partner.approval.show', $item->id) }}" class="btn btn-primary">
+                    <a href="{{ route('admin.partner.approval.show', $item->id) }}" class="btn btn-outline-primary">
                         <i class="fe fe-settings me-2"></i>승인 관리
                     </a>
                 </div>
@@ -62,8 +68,15 @@
                             </div>
                         </div>
                         <div class="col-md-3">
-                            <h6 class="text-muted">희망 시급</h6>
-                            <p class="mb-0 fw-bold">{{ number_format($item->expected_hourly_rate ?? 0) }}원</p>
+                            <h6 class="text-muted">추천인</h6>
+                            @if($item->referrerPartner)
+                                <p class="mb-0">
+                                    <strong class="text-primary">{{ $item->referrerPartner->partner_code }}</strong><br>
+                                    <small class="text-muted">{{ $item->referrerPartner->name }}</small>
+                                </p>
+                            @else
+                                <p class="mb-0 text-muted">직접 신청</p>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -72,8 +85,9 @@
     </div>
 
     <div class="row">
-        <!-- 지원자 정보 -->
-        <div class="col-lg-6">
+        <!-- 좌측 메인 컨텐츠 (col-8) -->
+        <div class="col-8">
+            <!-- 개인정보 -->
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="mb-0">개인정보</h5>
@@ -143,9 +157,7 @@
                     @endif
                 </div>
             </div>
-        </div>
 
-        <div class="col-lg-6">
             <!-- 기술정보 -->
             <div class="card mb-4">
                 <div class="card-header">
@@ -188,15 +200,90 @@
                     @endif
                 </div>
             </div>
+        </div>
+
+        <!-- 우측 사이드바 (col-4) -->
+        <div class="col-4">
+            <!-- 추천인 정보 (추천인이 있는 경우만 표시) -->
+            @if($item->referrerPartner)
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fe fe-users me-2"></i>추천인 정보
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong>파트너 코드:</strong>
+                        <br><span class="badge bg-primary fs-6">{{ $item->referrerPartner->partner_code }}</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong>추천인 이름:</strong>
+                        <br>{{ $item->referrerPartner->name }}
+                    </div>
+                    <div class="mb-3">
+                        <strong>추천인 이메일:</strong>
+                        <br><small>{{ $item->referrerPartner->email ?? 'N/A' }}</small>
+                    </div>
+                    @if($item->referrerPartner->partnerTier)
+                    <div class="mb-3">
+                        <strong>추천인 등급:</strong>
+                        <br><span class="badge bg-success">{{ $item->referrerPartner->partnerTier->tier_name }}</span>
+                    </div>
+                    @endif
+                    @if(isset($item->referral_source))
+                    <div class="mb-3">
+                        <strong>추천 방법:</strong>
+                        <br><span class="text-capitalize">{{ str_replace('_', ' ', $item->referral_source) }}</span>
+                    </div>
+                    @endif
+                    @if(isset($item->meeting_date))
+                    <div class="mb-3">
+                        <strong>만남 일자:</strong>
+                        <br>{{ \Carbon\Carbon::parse($item->meeting_date)->format('Y년 m월 d일') }}
+                    </div>
+                    @endif
+                </div>
+            </div>
+            @endif
+
+            <!-- 지원서 진행률 -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0 fw-bold">
+                        <i class="fe fe-activity me-2"></i>지원서 진행률
+                    </h6>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <div class="h2 mb-1">{{ $completenessScore }}%</div>
+                        <small class="text-muted">완성도</small>
+                    </div>
+                    <div class="progress mb-3" style="height: 10px;">
+                        <div class="progress-bar
+                            @if($completenessScore >= 80) bg-success
+                            @elseif($completenessScore >= 60) bg-warning
+                            @else bg-danger
+                            @endif"
+                            style="width: {{ $completenessScore }}%">
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        지원일: {{ $item->created_at->format('Y-m-d') }}
+                    </small>
+                </div>
+            </div>
 
             <!-- 관리자 메모 -->
             @if($item->admin_notes)
             <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0">관리자 메모</h5>
+                    <h6 class="mb-0 fw-bold">
+                        <i class="fe fe-message-square me-2"></i>관리자 메모
+                    </h6>
                 </div>
                 <div class="card-body">
-                    <p class="mb-0">{{ $item->admin_notes }}</p>
+                    <p class="mb-0 small">{{ $item->admin_notes }}</p>
                 </div>
             </div>
             @endif
@@ -205,39 +292,101 @@
             @if($item->approval_date || $item->rejection_date)
             <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0">처리 내역</h5>
+                    <h6 class="mb-0 fw-bold">
+                        <i class="fe fe-check-circle me-2"></i>처리 내역
+                    </h6>
                 </div>
                 <div class="card-body">
                     @if($item->approval_date)
-                        <div class="mb-2">
-                            <strong>승인일:</strong> {{ $item->approval_date->format('Y년 m월 d일 H시 i분') }}
+                        <div class="mb-3 p-2 bg-success bg-opacity-10 rounded">
+                            <div class="fw-bold text-success small">승인 완료</div>
+                            <div class="small">{{ $item->approval_date->format('Y년 m월 d일 H시 i분') }}</div>
+                            @if($item->approver)
+                                <div class="small text-muted">승인자: {{ $item->approver->name }}</div>
+                            @endif
                         </div>
-                        @if($item->approver)
-                            <div class="mb-2">
-                                <strong>승인자:</strong> {{ $item->approver->name }}
-                            </div>
-                        @endif
                     @endif
                     @if($item->rejection_date)
-                        <div class="mb-2">
-                            <strong>반려일:</strong> {{ $item->rejection_date->format('Y년 m월 d일 H시 i분') }}
+                        <div class="mb-3 p-2 bg-danger bg-opacity-10 rounded">
+                            <div class="fw-bold text-danger small">반려됨</div>
+                            <div class="small">{{ $item->rejection_date->format('Y년 m월 d일 H시 i분') }}</div>
+                            @if($item->rejector)
+                                <div class="small text-muted">반려자: {{ $item->rejector->name }}</div>
+                            @endif
+                            @if($item->rejection_reason)
+                                <div class="small mt-2 p-2 bg-light rounded">
+                                    <strong>반려 사유:</strong><br>
+                                    {{ $item->rejection_reason }}
+                                </div>
+                            @endif
                         </div>
-                        @if($item->rejector)
-                            <div class="mb-2">
-                                <strong>반려자:</strong> {{ $item->rejector->name }}
-                            </div>
-                        @endif
-                        @if($item->rejection_reason)
-                            <div class="mb-2">
-                                <strong>반려 사유:</strong>
-                                <p class="mt-1">{{ $item->rejection_reason }}</p>
-                            </div>
-                        @endif
                     @endif
                 </div>
             </div>
             @endif
+
+            <!-- 빠른 액션 -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0 fw-bold">
+                        <i class="fe fe-zap me-2"></i>빠른 액션
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ route('admin.partner.applications.edit', $item->id) }}"
+                           class="btn btn-outline-primary btn-sm">
+                            <i class="fe fe-edit me-1"></i>지원서 수정
+                        </a>
+                        <a href="{{ route('admin.partner.approval.show', $item->id) }}"
+                           class="btn btn-outline-success btn-sm">
+                            <i class="fe fe-settings me-1"></i>승인 관리
+                        </a>
+                        <button type="button"
+                                class="btn btn-outline-danger btn-sm"
+                                onclick="confirmDelete({{ $item->id }}, '{{ $item->personal_info['name'] ?? $item->user->name ?? 'Unknown' }}')">
+                            <i class="fe fe-trash-2 me-1"></i>지원서 삭제
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 삭제 확인 모달 -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">신청서 삭제 확인</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong id="deleteName"></strong>님의 파트너 신청서를 정말 삭제하시겠습니까?</p>
+                    <p class="text-danger small">이 작업은 되돌릴 수 없습니다.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <form id="deleteForm" method="POST" style="display: inline;">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-danger">삭제</button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+function confirmDelete(id, name) {
+    document.getElementById('deleteName').textContent = name;
+    document.getElementById('deleteForm').action = `{{ route('admin.partner.applications.index') }}/${id}`;
+
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+</script>
+@endpush

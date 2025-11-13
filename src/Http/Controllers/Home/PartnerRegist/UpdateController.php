@@ -10,8 +10,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 //use Jiny\Auth\Http\Controllers\Traits\JWTAuthTrait;
 
-use Jiny\Auth\Http\Controllers\HomeController;
-class UpdateController extends HomeController
+use Jiny\Partner\Http\Controllers\PartnerController;
+//use Jiny\Auth\Http\Controllers\HomeController;
+class UpdateController extends PartnerController
 {
 
     /**
@@ -19,6 +20,12 @@ class UpdateController extends HomeController
      */
     public function __invoke(Request $request, $id)
     {
+        \Log::info('UpdateController: Starting update process', [
+            'application_id' => $id,
+            'method' => $request->method(),
+            'input_keys' => array_keys($request->all())
+        ]);
+
         // Step1. JWT 인증여부 처리
         $user = $this->auth($request);
         if(!$user) {
@@ -27,19 +34,71 @@ class UpdateController extends HomeController
                 ->with('info', '파트너 서비스는 로그인 후 이용하실 수 있습니다.');
         }
 
+        \Log::info('UpdateController: User authenticated', [
+            'user_id' => $user->id,
+            'user_uuid' => $user->uuid
+        ]);
+
         // Step2. 신청서 조회 (본인의 신청서만, UUID 기반)
         $application = PartnerApplication::where('id', $id)
             ->where('user_uuid', $user->uuid)
             ->firstOrFail();
 
+        \Log::info('UpdateController: Application found', [
+            'application_id' => $application->id,
+            'application_status' => $application->application_status,
+            'user_uuid' => $application->user_uuid
+        ]);
+
         // 수정 가능한 상태인지 확인
-        if (!in_array($application->application_status, ['draft', 'rejected'])) {
+        if (!in_array($application->application_status, ['draft', 'submitted', 'rejected'])) {
+            \Log::warning('UpdateController: Invalid status for editing', [
+                'application_status' => $application->application_status,
+                'allowed_statuses' => ['draft', 'submitted', 'rejected']
+            ]);
             return redirect()->route('home.partner.regist.status', $application->id)
                 ->with('error', '현재 상태에서는 신청서를 수정할 수 없습니다.');
         }
 
+        \Log::info('UpdateController: Starting validation', [
+            'validation_rules_count' => count($this->getValidationRules($application))
+        ]);
+
+        // skills 배열에서 빈 값들 제거
+        $skills = $request->input('skills', []);
+        $filteredSkills = array_filter($skills, function($skill) {
+            return !empty(trim($skill));
+        });
+        $request->merge(['skills' => array_values($filteredSkills)]);
+
+        // certifications와 languages도 동일하게 처리
+        $certifications = $request->input('certifications', []);
+        $filteredCertifications = array_filter($certifications, function($cert) {
+            return !empty(trim($cert));
+        });
+        $request->merge(['certifications' => array_values($filteredCertifications)]);
+
+        $languages = $request->input('languages', []);
+        $filteredLanguages = array_filter($languages, function($lang) {
+            return !empty(trim($lang));
+        });
+        $request->merge(['languages' => array_values($filteredLanguages)]);
+
+        \Log::info('UpdateController: Filtered input arrays', [
+            'original_skills' => $skills,
+            'filtered_skills' => $filteredSkills,
+            'original_certifications' => $certifications,
+            'filtered_certifications' => $filteredCertifications,
+            'original_languages' => $languages,
+            'filtered_languages' => $filteredLanguages
+        ]);
+
         // 유효성 검사 (파일 업로드는 선택적으로 변경)
         $validatedData = $request->validate($this->getValidationRules($application), $this->getValidationMessages());
+
+        \Log::info('UpdateController: Validation completed successfully', [
+            'validated_data_keys' => array_keys($validatedData)
+        ]);
 
         try {
             DB::beginTransaction();
@@ -54,27 +113,23 @@ class UpdateController extends HomeController
             }
 
             // 신청서 데이터 구성
+            $newStatus = $application->application_status === 'rejected' ? 'reapplied' : 'submitted';
+
             $applicationData = [
-                'application_status' => $request->input('submit_type') === 'draft' ? 'draft' :
-                    ($application->application_status === 'rejected' ? 'reapplied' : 'submitted'),
+                'application_status' => $newStatus,
                 'personal_info' => [
                     'name' => $validatedData['name'],
+                    'email' => $user->email,
                     'phone' => $validatedData['phone'],
                     'address' => $validatedData['address'],
-                    'birth_year' => $validatedData['birth_year'],
-                    'education_level' => $validatedData['education_level'],
-                    'emergency_contact' => [
-                        'name' => $validatedData['emergency_contact_name'],
-                        'phone' => $validatedData['emergency_contact_phone'],
-                        'relationship' => $validatedData['emergency_contact_relationship']
-                    ]
+                    'country' => $validatedData['country']
                 ],
                 'experience_info' => [
-                    'total_years' => $validatedData['total_years'],
-                    'career_summary' => $validatedData['career_summary'],
+                    'total_years' => $validatedData['total_years'] ?? null,
+                    'career_summary' => $validatedData['career_summary'] ?? null,
                     'previous_companies' => $this->parsePreviousCompanies($request),
                     'portfolio_url' => $validatedData['portfolio_url'] ?? null,
-                    'bio' => $validatedData['bio']
+                    'bio' => $validatedData['bio'] ?? null
                 ],
                 'skills_info' => [
                     'skills' => $validatedData['skills'] ?? [],
@@ -83,11 +138,9 @@ class UpdateController extends HomeController
                     'languages' => array_filter($validatedData['languages'] ?? [])
                 ],
                 'documents' => $documents,
-                'expected_hourly_rate' => $validatedData['expected_hourly_rate'],
                 'preferred_work_areas' => [
                     'regions' => $validatedData['preferred_regions'] ?? [],
                     'districts' => $validatedData['preferred_districts'] ?? [],
-                    'max_distance_km' => $validatedData['max_distance_km'],
                     'transport_preference' => $validatedData['transport_preference'] ?? []
                 ],
                 'availability_schedule' => [
@@ -112,15 +165,51 @@ class UpdateController extends HomeController
                 $applicationData['rejected_by'] = null;
             }
 
+            // 제출 시간 갱신 (항상 제출이므로)
+            $applicationData['submitted_at'] = now();
+
+            \Log::info('UpdateController: About to update application', [
+                'application_id' => $application->id,
+                'application_data_keys' => array_keys($applicationData),
+                'new_status' => $applicationData['application_status']
+            ]);
+
             // 신청서 업데이트
-            $application->update($applicationData);
+            $updateResult = $application->update($applicationData);
+
+            \Log::info('UpdateController: Update result', [
+                'application_id' => $application->id,
+                'update_result' => $updateResult,
+                'current_status' => $application->fresh()->application_status
+            ]);
 
             DB::commit();
 
-            if ($application->application_status === 'draft') {
-                return redirect()->route('home.partner.regist.index')
-                    ->with('success', '신청서가 임시저장되었습니다.');
-            } elseif ($application->application_status === 'reapplied') {
+            \Log::info('UpdateController: Application updated successfully', [
+                'application_id' => $application->id,
+                'new_status' => $application->application_status,
+                'submitted_at' => $application->submitted_at
+            ]);
+
+            // AJAX 요청인지 확인
+            if ($request->expectsJson() || $request->ajax()) {
+                \Log::info('UpdateController: Returning JSON response for AJAX request');
+
+                $message = $application->application_status === 'reapplied'
+                    ? '재신청이 성공적으로 제출되었습니다! 재검토 후 연락드리겠습니다.'
+                    : '신청서가 성공적으로 수정되었습니다!';
+
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'redirect' => route('home.partner.regist.status', $application->id),
+                    'application_status' => $application->application_status,
+                    'application_id' => $application->id
+                ]);
+            }
+
+            // 일반 폼 제출 응답 (기존 방식)
+            if ($application->application_status === 'reapplied') {
                 return redirect()->route('home.partner.regist.status', $application->id)
                     ->with('success', '재신청이 성공적으로 제출되었습니다! 재검토 후 연락드리겠습니다.');
             } else {
@@ -128,9 +217,39 @@ class UpdateController extends HomeController
                     ->with('success', '신청서가 성공적으로 수정되었습니다!');
             }
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            \Log::error('Partner application validation failed', [
+                'errors' => $e->errors(),
+                'application_id' => $id
+            ]);
+
+            // AJAX 요청에 대한 유효성 검사 오류 응답
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '입력 데이터에 오류가 있습니다.',
+                    'errors' => $e->errors()
+                ], 422);
+            }
+
+            return back()->withErrors($e->errors())->withInput();
+
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Partner application update failed: ' . $e->getMessage());
+            \Log::error('Partner application update failed: ' . $e->getMessage(), [
+                'application_id' => $id,
+                'exception' => $e->getTraceAsString()
+            ]);
+
+            // AJAX 요청에 대한 에러 응답
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '신청서 수정 중 오류가 발생했습니다. 다시 시도해주세요.',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
 
             return back()->withInput()
                 ->with('error', '신청서 수정 중 오류가 발생했습니다. 다시 시도해주세요.');
@@ -275,31 +394,25 @@ class UpdateController extends HomeController
             'name' => 'required|string|max:100',
             'phone' => 'required|string|regex:/^010-\d{4}-\d{4}$/',
             'address' => 'required|string|max:255',
-            'birth_year' => 'required|integer|min:1950|max:' . (date('Y') - 18),
-            'education_level' => 'required|string|in:고등학교,전문대학,대학교,대학원',
-            'emergency_contact_name' => 'required|string|max:100',
-            'emergency_contact_phone' => 'required|string|regex:/^010-\d{4}-\d{4}$/',
-            'emergency_contact_relationship' => 'required|string|max:50',
+            'country' => 'required|string|in:KR,US,JP,CN,CA,AU,GB,DE,FR,SG,OTHER',
 
             // 경력정보
-            'total_years' => 'required|integer|min:0|max:50',
-            'career_summary' => 'required|string|max:1000',
+            'total_years' => 'nullable|integer|min:0|max:50',
+            'career_summary' => 'nullable|string|max:1000',
             'portfolio_url' => 'nullable|url|max:255',
-            'bio' => 'required|string|max:500',
+            'bio' => 'nullable|string|max:500',
 
             // 기술정보
             'skills' => 'nullable|array',
-            'skills.*' => 'string|max:100',
+            'skills.*' => 'nullable|string|max:100',
             'certifications' => 'nullable|array',
-            'certifications.*' => 'string|max:100',
+            'certifications.*' => 'nullable|string|max:100',
             'languages' => 'nullable|array',
-            'languages.*' => 'string|max:100',
+            'languages.*' => 'nullable|string|max:100',
 
             // 근무조건
-            'expected_hourly_rate' => 'required|numeric|min:10000|max:100000',
             'preferred_regions' => 'nullable|array',
             'preferred_districts' => 'nullable|array',
-            'max_distance_km' => 'required|integer|min:1|max:200',
 
             // 파일 (수정시에는 선택적)
             'resume' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
@@ -308,10 +421,6 @@ class UpdateController extends HomeController
             'other_documents.*' => 'file|mimes:pdf,doc,docx,jpg,png|max:5120'
         ];
 
-        // 기존 이력서가 없고 새로 업로드하지 않는 경우에만 필수
-        if (!isset($application->documents['resume'])) {
-            $rules['resume'] = 'required|file|mimes:pdf,doc,docx|max:5120';
-        }
 
         // 재신청인 경우 재신청 사유 필수
         if ($application->application_status === 'rejected') {

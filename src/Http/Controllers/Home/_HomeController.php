@@ -16,10 +16,7 @@ class HomeController extends Controller
      */
     protected function auth(Request $request)
     {
-        // JWT 토큰 확인 로직
-        // 실제 JWT 구현에 따라 수정이 필요합니다
-
-        // 세션 기반 인증도 확인
+        // 세션 기반 인증 확인
         if (Auth::check()) {
             return Auth::user();
         }
@@ -28,13 +25,15 @@ class HomeController extends Controller
         $token = $request->bearerToken() ?: $request->header('Authorization');
 
         if ($token) {
-            // JWT 토큰 검증 로직을 여기에 구현
-            // 예시로 간단한 구조체 반환
-            return (object) [
-                'uuid' => 'temp-uuid-' . time(),
-                'name' => 'Test User',
-                'email' => 'test@example.com'
-            ];
+            try {
+                // JWT 토큰이 있는 경우도 세션 인증 사용자 반환
+                // (실제 JWT 구현 시 여기를 수정)
+                if (Auth::check()) {
+                    return Auth::user();
+                }
+            } catch (\Exception $e) {
+                // JWT 토큰 검증 실패
+            }
         }
 
         return null;

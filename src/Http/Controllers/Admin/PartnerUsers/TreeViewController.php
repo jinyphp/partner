@@ -30,6 +30,9 @@ class TreeViewController extends Controller
         // 직계 상위 파트너 (1개만)
         $directParent = $user->parent;
 
+        // 모든 상위 파트너들 (조상들)
+        $ancestors = $user->getAncestors();
+
         // 모든 하위 파트너들 (재귀적으로)
         $descendants = $this->getDescendantsTree($user);
 
@@ -39,6 +42,7 @@ class TreeViewController extends Controller
         return view("{$this->viewPath}.tree", [
             'user' => $user,
             'directParent' => $directParent,
+            'ancestors' => $ancestors,
             'descendants' => $descendants,
             'treeStats' => $treeStats,
             'title' => $this->title . ' - ' . $user->name,
@@ -114,7 +118,7 @@ class TreeViewController extends Controller
      */
     protected function getAncestorPath(PartnerUser $user)
     {
-        $ancestors = $user->ancestors();
+        $ancestors = $user->getAncestors();
         return $ancestors->sortBy('level');
     }
 }

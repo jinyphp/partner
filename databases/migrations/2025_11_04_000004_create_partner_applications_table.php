@@ -81,6 +81,14 @@ return new class extends Migration
                 'other'            // 기타
             ])->nullable()->default('self_application')->comment('추천 경로');
 
+            // 추천자 정보 (개별 필드)
+            $table->string('referrer_name', 100)->nullable()->comment('추천자 이름');
+            $table->string('referrer_contact', 100)->nullable()->comment('추천자 연락처');
+            $table->string('referrer_relationship', 100)->nullable()->comment('추천자와의 관계');
+            $table->date('meeting_date')->nullable()->comment('미팅 날짜');
+            $table->string('meeting_location', 255)->nullable()->comment('미팅 장소');
+            $table->string('introduction_method', 255)->nullable()->comment('소개 방식');
+
             // 추천 관련 상세 정보 (JSON)
             $table->json('referral_details')->nullable()->comment('추천 상세 정보');
             // 추천 상세 정보 구조 예시:
@@ -182,6 +190,13 @@ return new class extends Migration
             //     "uploaded_at": "2025-11-04T10:05:00Z"
             //   }
             // }
+
+            // 지원 동기 및 목표
+            $table->text('motivation')->nullable()->comment('지원 동기');
+            $table->text('goals')->nullable()->comment('향후 목표');
+
+            // 제출 일시
+            $table->timestamp('submitted_at')->nullable()->comment('신청서 제출 일시');
 
             // 면접 관련
             $table->datetime('interview_date')->nullable(); // 면접 일정

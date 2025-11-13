@@ -13,7 +13,7 @@ class IndexController extends Controller
      */
     public function __invoke(Request $request)
     {
-        $query = PartnerApplication::with(['user', 'approver', 'rejector']);
+        $query = PartnerApplication::with(['user', 'approver', 'rejector', 'referrerPartner']);
 
         // 검색 기능
         if ($request->has('search') && $request->search) {

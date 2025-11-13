@@ -134,6 +134,12 @@
     </div>
 </li>
 
+<li class="nav-item">
+    <a class="nav-link" href="{{ route('home.partner.network.index') }}">
+        하위관리
+    </a>
+</li>
+
 {{-- 리뷰 관리 --}}
 <li class="nav-item">
     <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#navPartnerReviews" aria-expanded="false"

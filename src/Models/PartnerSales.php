@@ -61,7 +61,7 @@ class PartnerSales extends Model
     protected $casts = [
         'partner_id' => 'integer',
         'amount' => 'decimal:2',
-        'sales_date' => 'date',
+        'sales_date' => 'datetime', // 시분초 포함 datetime으로 변경
         'confirmed_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'commission_calculated' => 'boolean',
@@ -121,27 +121,27 @@ class PartnerSales extends Model
     }
 
     /**
-     * 승인자 관계
+     * 승인자 관계 (파트너 시스템)
      */
     public function approver()
     {
-        return $this->belongsTo(\App\Models\User::class, 'approved_by');
+        return $this->belongsTo(PartnerUser::class, 'approved_by');
     }
 
     /**
-     * 등록자 관계
+     * 등록자 관계 (파트너 시스템)
      */
     public function creator()
     {
-        return $this->belongsTo(\App\Models\User::class, 'created_by');
+        return $this->belongsTo(PartnerUser::class, 'created_by');
     }
 
     /**
-     * 수정자 관계
+     * 수정자 관계 (파트너 시스템)
      */
     public function updater()
     {
-        return $this->belongsTo(\App\Models\User::class, 'updated_by');
+        return $this->belongsTo(PartnerUser::class, 'updated_by');
     }
 
     /**
@@ -321,7 +321,7 @@ class PartnerSales extends Model
         }
 
         // 현재 트리 구조와 상위 파트너들 정보 수집
-        $ancestors = $partner->ancestors();
+        $ancestors = $partner->getAncestors();
         $snapshot = [
             'partner_id' => $partner->id,
             'partner_name' => $partner->name,

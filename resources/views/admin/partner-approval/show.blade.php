@@ -179,50 +179,39 @@
             </div>
         </div>
 
+        <!-- 추천 파트너 정보 (추천인이 있는 경우만 표시) -->
+        @if ($application->referrerPartner)
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header ">
+                    <h6 class="mb-0 text-dark">
+                        <i class="fe fe-users me-2"></i>추천 파트너 정보
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong>파트너 코드:</strong>
+                            <span class="badge bg-primary ms-2">{{ $application->referrerPartner->partner_code }}</span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>추천인 이름:</strong> {{ $application->referrerPartner->name }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>추천인 이메일:</strong> {{ $application->referrerPartner->email ?? 'N/A' }}
+                        </div>
+                        @if ($application->referrerPartner->partnerTier)
+                            <div class="col-md-6 mb-3">
+                                <strong>추천인 등급:</strong>
+                                <span
+                                    class="badge bg-success">{{ $application->referrerPartner->partnerTier->tier_name }}</span>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endif
 
-        <!-- 평가 결과 -->
-        <div class="row mb-4">
-            <div class="col-lg-6">
-                <div class="card border-0 shadow-sm d-flex" style="min-height: 200px;">
-                    <div class="card-header bg-success text-white">
-                        <h6 class="mb-0"><i class="fe fe-check-circle me-2"></i>강점</h6>
-                    </div>
-                    <div class="card-body d-flex flex-column justify-content-center">
-                        @if (count($evaluation['strengths']) > 0)
-                            <ul class="list-unstyled mb-0">
-                                @foreach ($evaluation['strengths'] as $strength)
-                                    <li class="mb-2">
-                                        <i class="fe fe-plus-circle text-success me-2"></i>{{ $strength }}
-                                    </li>
-                                @endforeach
-                            </ul>
-                        @else
-                            <p class="text-muted mb-0">특별한 강점이 발견되지 않았습니다.</p>
-                        @endif
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-6">
-                <div class="card border-0 shadow-sm d-flex" style="min-height: 200px;">
-                    <div class="card-header bg-warning text-white">
-                        <h6 class="mb-0"><i class="fe fe-alert-triangle me-2"></i>우려사항</h6>
-                    </div>
-                    <div class="card-body d-flex flex-column justify-content-center">
-                        @if (count($evaluation['concerns']) > 0)
-                            <ul class="list-unstyled mb-0">
-                                @foreach ($evaluation['concerns'] as $concern)
-                                    <li class="mb-2">
-                                        <i class="fe fe-minus-circle text-warning me-2"></i>{{ $concern }}
-                                    </li>
-                                @endforeach
-                            </ul>
-                        @else
-                            <p class="text-muted mb-0">특별한 우려사항이 없습니다.</p>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        </div>
+
 
 
 
@@ -665,6 +654,50 @@
             </div>
             <div class="col-lg-8">
 
+                <!-- 평가 결과 -->
+                <div class="row mb-4">
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm d-flex" style="min-height: 200px;">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0"><i class="fe fe-check-circle me-2"></i>강점</h6>
+                            </div>
+                            <div class="card-body d-flex flex-column justify-content-center">
+                                @if (count($evaluation['strengths']) > 0)
+                                    <ul class="list-unstyled mb-0">
+                                        @foreach ($evaluation['strengths'] as $strength)
+                                            <li class="mb-2">
+                                                <i class="fe fe-plus-circle text-success me-2"></i>{{ $strength }}
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @else
+                                    <p class="text-muted mb-0">특별한 강점이 발견되지 않았습니다.</p>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm d-flex" style="min-height: 200px;">
+                            <div class="card-header bg-warning text-white">
+                                <h6 class="mb-0"><i class="fe fe-alert-triangle me-2"></i>우려사항</h6>
+                            </div>
+                            <div class="card-body d-flex flex-column justify-content-center">
+                                @if (count($evaluation['concerns']) > 0)
+                                    <ul class="list-unstyled mb-0">
+                                        @foreach ($evaluation['concerns'] as $concern)
+                                            <li class="mb-2">
+                                                <i class="fe fe-minus-circle text-warning me-2"></i>{{ $concern }}
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @else
+                                    <p class="text-muted mb-0">특별한 우려사항이 없습니다.</p>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
 
 
                 <!-- 개인정보 -->
@@ -682,7 +715,8 @@
                                     <strong>연락처:</strong> {{ $application->personal_info['phone'] ?? 'N/A' }}
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <strong>이메일:</strong> {{ $application->user->email ?? 'N/A' }}
+                                    <strong>이메일:</strong>
+                                    {{ $application->personal_info['email'] ?? ($application->user->email ?? 'N/A') }}
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <strong>출생년도:</strong> {{ $application->personal_info['birth_year'] ?? 'N/A' }}
@@ -707,6 +741,8 @@
                         @endif
                     </div>
                 </div>
+
+
 
                 <!-- 경력정보 -->
                 <div class="card border-0 shadow-sm mb-4">
@@ -930,6 +966,14 @@
                                             </button>
                                         @endif
 
+                                        <!-- 삭제 버튼 - 특정 상태에서만 표시 -->
+                                        @if (in_array($application->application_status, ['pending', 'submitted', 'reviewing', 'rejected', 'draft', 'cancelled']))
+                                            <button type="button" class="btn btn-outline-secondary"
+                                                onclick="showDeleteModal()">
+                                                <i class="fe fe-trash-2 me-2"></i>삭제
+                                            </button>
+                                        @endif
+
                                         @if (
                                             $application->application_status === 'reviewing' &&
                                                 !in_array($application->application_status, ['submitted', 'interview', 'reapplied']))
@@ -944,6 +988,13 @@
                         </div>
                     </div>
                 @endif
+
+                <div class="d-flex justify-content-center gap-3">
+                    <x-jiny-auth::modal-delete :deleteUrl="route('admin.partner.approval.destroy', $application->id)">
+                        <i class="fe fe-trash-2 me-2"></i>신청서 삭제
+                    </x-jiny-auth::modal-delete>
+                </div>
+
 
 
             </div>
@@ -1080,10 +1131,11 @@
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form id="interviewForm" action="{{ $application->application_status === 'interview' ? route('admin.partner.approval.interview.update', $application->id) : route('admin.partner.approval.interview.schedule', $application->id) }}"
+                <form id="interviewForm"
+                    action="{{ $application->application_status === 'interview' ? route('admin.partner.approval.interview.update', $application->id) : route('admin.partner.approval.interview.schedule', $application->id) }}"
                     method="POST">
                     @csrf
-                    @if($application->application_status === 'interview')
+                    @if ($application->application_status === 'interview')
                         @method('PUT')
                     @endif
                     <div class="modal-body">
@@ -1139,8 +1191,15 @@
                     </div>
                 </form>
             </div>
+
+
         </div>
+
     </div>
+
+
+
+
 @endsection
 
 @push('styles')
@@ -1253,40 +1312,40 @@
 
             // AJAX 요청
             fetch(form.action, {
-                method: form.method,
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // 성공 메시지 표시
-                    showToast('success', data.message);
+                    method: form.method,
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 성공 메시지 표시
+                        showToast('success', data.message);
 
-                    // 모달 닫기
-                    bootstrap.Modal.getInstance(document.getElementById('approveModal')).hide();
+                        // 모달 닫기
+                        bootstrap.Modal.getInstance(document.getElementById('approveModal')).hide();
 
-                    // 페이지 새로고침 (데이터 업데이트 반영)
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
-                } else {
-                    // 오류 메시지 표시
-                    showToast('error', data.message || '승인 처리 중 오류가 발생했습니다.');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showToast('error', '네트워크 오류가 발생했습니다.');
-            })
-            .finally(() => {
-                // 버튼 상태 복원
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalBtnText;
-            });
+                        // 페이지 새로고침 (데이터 업데이트 반영)
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    } else {
+                        // 오류 메시지 표시
+                        showToast('error', data.message || '승인 처리 중 오류가 발생했습니다.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('error', '네트워크 오류가 발생했습니다.');
+                })
+                .finally(() => {
+                    // 버튼 상태 복원
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnText;
+                });
         });
 
         // 면접 설정 폼 AJAX 처리
@@ -1304,40 +1363,40 @@
 
             // AJAX 요청
             fetch(form.action, {
-                method: form.method,
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // 성공 메시지 표시
-                    showToast('success', data.message);
+                    method: form.method,
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 성공 메시지 표시
+                        showToast('success', data.message);
 
-                    // 모달 닫기
-                    bootstrap.Modal.getInstance(document.getElementById('interviewModal')).hide();
+                        // 모달 닫기
+                        bootstrap.Modal.getInstance(document.getElementById('interviewModal')).hide();
 
-                    // 페이지 새로고침 (데이터 업데이트 반영)
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
-                } else {
-                    // 오류 메시지 표시
-                    showToast('error', data.message || '면접 설정 중 오류가 발생했습니다.');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showToast('error', '네트워크 오류가 발생했습니다.');
-            })
-            .finally(() => {
-                // 버튼 상태 복원
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalBtnText;
-            });
+                        // 페이지 새로고침 (데이터 업데이트 반영)
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    } else {
+                        // 오류 메시지 표시
+                        showToast('error', data.message || '면접 설정 중 오류가 발생했습니다.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('error', '네트워크 오류가 발생했습니다.');
+                })
+                .finally(() => {
+                    // 버튼 상태 복원
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnText;
+                });
         });
 
         // 토스트 메시지 표시 함수
@@ -1374,5 +1433,112 @@
             const toast = new bootstrap.Toast(toastElement);
             toast.show();
         }
+
+        // 삭제 모달 표시 함수
+        function showDeleteModal() {
+            new bootstrap.Modal(document.getElementById('deleteModal')).show();
+        }
+
+        // 삭제 폼 AJAX 처리
+        document.getElementById('deleteForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const form = this;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.innerHTML;
+
+            // 버튼 비활성화
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fe fe-loader me-2"></i>삭제 중...';
+
+            // FormData 생성
+            const formData = new FormData(form);
+
+            fetch(form.action, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
+                            'content'),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('success', data.message);
+
+                        // 모달 닫기
+                        bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+
+                        // 메인 콘텐츠 영역 삭제 효과
+                        const mainContent = document.querySelector('.container-fluid');
+                        if (mainContent) {
+                            // 삭제된 항목 표시 오버레이 추가
+                            const overlay = document.createElement('div');
+                            overlay.style.cssText = `
+                            position: fixed;
+                            top: 0;
+                            left: 0;
+                            right: 0;
+                            bottom: 0;
+                            background: rgba(220, 53, 69, 0.1);
+                            backdrop-filter: blur(2px);
+                            z-index: 1040;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        `;
+
+                            const deleteMessage = document.createElement('div');
+                            deleteMessage.style.cssText = `
+                            background: white;
+                            padding: 30px;
+                            border-radius: 10px;
+                            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                            text-align: center;
+                            max-width: 400px;
+                            border-left: 5px solid #dc3545;
+                        `;
+                            deleteMessage.innerHTML = `
+                            <div class="text-danger mb-3">
+                                <i class="fe fe-check-circle" style="font-size: 48px;"></i>
+                            </div>
+                            <h5 class="text-danger mb-2">신청서가 삭제되었습니다</h5>
+                            <p class="text-muted mb-0">잠시 후 목록으로 이동합니다...</p>
+                        `;
+
+                            overlay.appendChild(deleteMessage);
+                            document.body.appendChild(overlay);
+
+                            // 메인 콘텐츠 페이드 아웃
+                            mainContent.style.transition = 'opacity 0.5s ease-out, transform 0.5s ease-out';
+                            mainContent.style.opacity = '0.3';
+                            mainContent.style.transform = 'scale(0.95)';
+                            mainContent.style.filter = 'grayscale(100%)';
+                        }
+
+                        // 2초 후 이전 페이지로 이동 (시각 효과 시간 고려)
+                        setTimeout(() => {
+                            if (data.redirect) {
+                                window.location.href = data.redirect;
+                            } else {
+                                window.history.back();
+                            }
+                        }, 2000);
+                    } else {
+                        showToast('error', data.message || '삭제 처리 중 오류가 발생했습니다.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('error', '네트워크 오류가 발생했습니다.');
+                })
+                .finally(() => {
+                    // 버튼 상태 복원
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnText;
+                });
+        });
     </script>
 @endpush

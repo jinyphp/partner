@@ -27,82 +27,8 @@
             <form action="{{ route('admin.' . $routePrefix . '.store') }}" method="POST" id="partnerUserForm">
                 @csrf
 
-                <!-- 선택된 사용자 정보 (숨김 필드) -->
-                <input type="hidden" name="user_id" id="user_id" value="{{ old('user_id') }}">
-                <input type="hidden" name="user_table" id="user_table" value="{{ old('user_table') }}">
-                <input type="hidden" name="user_uuid" id="user_uuid" value="{{ old('user_uuid') }}">
-                <input type="hidden" name="shard_number" id="shard_number" value="{{ old('shard_number') }}">
-
-                <!-- 회원정보 카드 -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">
-                            <i class="fe fe-user me-2"></i>회원정보
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <!-- 사용자 검색 안내 -->
-                        <div class="alert alert-info">
-                            <i class="fe fe-info me-2"></i>
-                            <strong>사용자 검색:</strong> 이메일을 입력하여 샤딩된 사용자 테이블에서 등록할 사용자를 검색하세요.
-                        </div>
-
-                        <!-- 사용자 이메일 검색 -->
-                        <div class="mb-3">
-                            <label for="search_email" class="form-label">사용자 이메일 검색 <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <input type="text"
-                                       class="form-control"
-                                       id="search_email"
-                                       placeholder="이메일 주소로 사용자 검색..."
-                                       value="{{ old('search_email') }}"
-                                       onkeypress="if(event.key==='Enter') searchUsers()">
-                                <button type="button" class="btn btn-outline-primary" onclick="searchUsers()">
-                                    <i class="fe fe-search me-1"></i>검색
-                                </button>
-                            </div>
-                            <small class="text-muted">부분 이메일로도 검색 가능합니다 (예: hojin1@jinyphp.com)</small>
-                        </div>
-
-                        <!-- 검색 결과 표시 영역 -->
-                        <div id="search_results" class="mb-4" style="display: none;">
-                            <label class="form-label">검색 결과</label>
-                            <div class="border rounded p-3">
-                                <div id="search_results_content">
-                                    <!-- 검색 결과가 여기에 표시됩니다 -->
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 선택된 사용자 기본 정보 -->
-                        <div class="row">
-                            <div class="col-md-6">
-                                <label for="email" class="form-label">이메일 <span class="text-danger">*</span></label>
-                                <input type="email"
-                                       class="form-control @error('email') is-invalid @enderror"
-                                       name="email"
-                                       id="email"
-                                       value="{{ old('email') }}"
-                                       readonly>
-                                @error('email')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label for="name" class="form-label">이름 <span class="text-danger">*</span></label>
-                                <input type="text"
-                                       class="form-control @error('name') is-invalid @enderror"
-                                       name="name"
-                                       id="name"
-                                       value="{{ old('name') }}"
-                                       readonly>
-                                @error('name')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {{-- 샤딩 회원 검색 --}}
+                @includeIf("jiny-partner::admin.partner-users.partials.search_user")
 
                 <!-- 파트너 정보 카드 -->
                 <div class="card mb-4">
@@ -135,11 +61,9 @@
                                 <select name="status"
                                         id="status"
                                         class="form-control @error('status') is-invalid @enderror">
-                                    @foreach($statusOptions as $value => $label)
-                                        <option value="{{ $value }}" {{ old('status', 'pending') == $value ? 'selected' : '' }}>
-                                            {{ $label }}
-                                        </option>
-                                    @endforeach
+                                    <option value="pending" {{ old('status', 'pending') == 'pending' ? 'selected' : '' }}>대기</option>
+                                    <option value="active" {{ old('status') == 'active' ? 'selected' : '' }}>승인</option>
+                                    <option value="suspended" {{ old('status') == 'suspended' ? 'selected' : '' }}>정지</option>
                                 </select>
                                 @error('status')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -356,137 +280,20 @@
 
 @push('scripts')
 <script>
-// 상태 변경시 사유 입력 필드 표시/숨김
+// 상태 변경시 사유 입력 필드 표시/숨김 (간단한 워크플로우: 대기->승인->정지)
 document.getElementById('status').addEventListener('change', function() {
     const statusReasonGroup = document.getElementById('status_reason_group');
     const selectedStatus = this.value;
 
-    if (selectedStatus === 'suspended' || selectedStatus === 'inactive') {
+    // 승인 또는 정지 상태로 변경시 사유 필드 표시
+    if (selectedStatus === 'active' || selectedStatus === 'suspended') {
         statusReasonGroup.style.display = 'block';
     } else {
         statusReasonGroup.style.display = 'none';
     }
 });
 
-// 사용자 검색 함수
-async function searchUsers() {
-    const email = document.getElementById('search_email').value.trim();
-
-    if (!email) {
-        alert('검색할 이메일을 입력하세요.');
-        return;
-    }
-
-    const resultsDiv = document.getElementById('search_results');
-    const contentDiv = document.getElementById('search_results_content');
-
-    // 로딩 표시
-    contentDiv.innerHTML = '<div class="text-center py-3"><i class="fe fe-loader spin"></i> 검색 중...</div>';
-    resultsDiv.style.display = 'block';
-
-    try {
-        const params = new URLSearchParams({
-            email: email
-        });
-
-        const response = await fetch(`{{ route('admin.partner.users.search') }}?${params}`, {
-            method: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error('네트워크 응답이 올바르지 않습니다.');
-        }
-
-        const data = await response.json();
-
-        if (data.success && data.users && data.users.length > 0) {
-            let html = '<div class="list-group">';
-
-            data.users.forEach(user => {
-                html += `
-                    <div class="list-group-item list-group-item-action cursor-pointer"
-                         onclick="selectUser(${user.id}, '${user.user_table}', '${user.email}', '${user.name}', '${user.uuid || ''}', ${user.shard_number || 0})">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>${user.name}</strong><br>
-                                <small class="text-muted">${user.email}</small>
-                                ${user.uuid ? `<br><small class="text-muted">UUID: ${user.uuid}</small>` : ''}
-                            </div>
-                            <div>
-                                <span class="badge bg-secondary">${user.user_table}</span>
-                                ${user.shard_number > 0 ? `<br><span class="badge bg-info">샤드 ${user.shard_number}</span>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-
-            html += '</div>';
-            html += `<div class="mt-2 text-muted small">
-                        <div>총 ${data.total_found || 0}명 중 ${data.available_count || 0}명 등록 가능</div>
-                        ${data.already_registered > 0 ? `<div class="text-warning">• ${data.already_registered}명은 이미 활성 상태로 등록됨</div>` : ''}
-                        ${data.deleted_registered > 0 ? `<div class="text-info">• ${data.deleted_registered}명은 이전에 등록되었다가 삭제됨</div>` : ''}
-                     </div>`;
-            contentDiv.innerHTML = html;
-        } else {
-            contentDiv.innerHTML = `
-                <div class="text-center py-3">
-                    <i class="fe fe-search text-muted mb-2" style="font-size: 2rem;"></i>
-                    <div class="text-muted">${data.message || '검색 결과가 없습니다.'}</div>
-                </div>
-            `;
-        }
-    } catch (error) {
-        contentDiv.innerHTML = `
-            <div class="text-center py-3">
-                <i class="fe fe-alert-triangle text-danger mb-2" style="font-size: 2rem;"></i>
-                <div class="text-danger">검색 중 오류가 발생했습니다.</div>
-                <small class="text-muted">${error.message}</small>
-            </div>
-        `;
-        console.error('Search error:', error);
-    }
-}
-
-// 사용자 선택 함수
-function selectUser(userId, userTable, email, name, uuid, shardNumber) {
-    document.getElementById('user_id').value = userId;
-    document.getElementById('user_table').value = userTable;
-    document.getElementById('user_uuid').value = uuid || '';
-    document.getElementById('shard_number').value = shardNumber || 0;
-    document.getElementById('email').value = email;
-    document.getElementById('name').value = name;
-
-    // 검색 결과 숨김
-    document.getElementById('search_results').style.display = 'none';
-
-    // 선택된 사용자 정보 표시
-    document.getElementById('search_email').value = email;
-
-    // 성공 메시지
-    const alert = document.createElement('div');
-    alert.className = 'alert alert-success alert-dismissible fade show';
-    alert.innerHTML = `
-        <i class="fe fe-check-circle me-2"></i>
-        <strong>${name}</strong> (${email}) 사용자가 선택되었습니다.
-        <br><small class="text-muted">테이블: ${userTable} | UUID: ${uuid || 'N/A'} | 샤드: ${shardNumber || 0}</small>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-
-    document.getElementById('partnerUserForm').insertBefore(alert, document.getElementById('partnerUserForm').firstChild);
-
-    // 3초 후 자동 제거
-    setTimeout(() => {
-        if (alert.parentNode) {
-            alert.remove();
-        }
-    }, 3000);
-}
+// 중복된 JavaScript 제거됨 - search_user.blade.php partial에서 처리
 
 // JSON 유효성 검사
 document.getElementById('profile_data').addEventListener('blur', function() {

@@ -2,13 +2,13 @@
 
 namespace Jiny\Partner\Http\Controllers\Home\PartnerApproval;
 
-use Jiny\Partner\Http\Controllers\Home\HomeController;
+use Jiny\Partner\Http\Controllers\PartnerController;
 use Jiny\Partner\Models\PartnerApplication;
 use Jiny\Partner\Models\PartnerUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class LimitsController extends HomeController
+class LimitsController extends PartnerController
 {
     /**
      * 승인 한도 및 용량 확인 페이지
@@ -16,34 +16,31 @@ class LimitsController extends HomeController
      */
     public function __invoke(Request $request)
     {
-        // JWT 인증 확인
+        // 세션 인증 확인
         $user = $this->auth($request);
         if (!$user) {
-            if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'JWT 인증이 필요합니다.'], 401);
-            }
-            return redirect()->route('login')->with('error', 'JWT 인증이 필요합니다.');
+            return redirect()->route('login')->with('error', '로그인이 필요합니다.');
         }
 
-        // 파트너 정보 확인
-        $partner = PartnerUser::where('user_uuid', $user->uuid)->first();
+        // 파트너 정보 확인 (tier 관계 포함 로드)
+        $partner = PartnerUser::with('tier')->where('user_uuid', $user->uuid)->first();
         if (!$partner) {
-            if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => '파트너 등록이 필요합니다.'], 403);
+            // 파트너 신청 정보 확인
+            $partnerApplication = \Jiny\Partner\Models\PartnerApplication::where('user_uuid', $user->uuid)
+                ->latest()
+                ->first();
+
+            if ($partnerApplication) {
+                return redirect()->route('home.partner.regist.status', $partnerApplication->id)
+                    ->with('info', '파트너 신청이 아직 처리 중입니다.');
+            } else {
+                return redirect()->route('home.partner.intro')
+                    ->with('info', '파트너 프로그램에 먼저 가입해 주세요.');
             }
-            return redirect()->route('home.partner.regist.index')
-                ->with('error', '파트너 등록이 필요합니다.');
         }
 
         // 한도 정보 수집
         $limitsData = $this->collectLimitsData($partner);
-
-        if ($request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'data' => $limitsData
-            ]);
-        }
 
         return view('jiny-partner::home.partner-approval.limits', [
             'partner' => $partner,
@@ -57,7 +54,7 @@ class LimitsController extends HomeController
      */
     private function collectLimitsData(PartnerUser $partner): array
     {
-        $tierName = $partner->tier_name ?? 'Bronze';
+        $tierName = $partner->tier->name ?? 'Bronze';
 
         return [
             'current_tier' => $this->getCurrentTierInfo($partner),
@@ -76,7 +73,7 @@ class LimitsController extends HomeController
      */
     private function getCurrentTierInfo(PartnerUser $partner): array
     {
-        $tierName = $partner->tier_name ?? 'Bronze';
+        $tierName = $partner->tier->name ?? 'Bronze';
 
         $tierDescriptions = [
             'Bronze' => '기본 파트너 등급',
@@ -107,7 +104,7 @@ class LimitsController extends HomeController
      */
     private function getApprovalLimits(PartnerUser $partner): array
     {
-        $tierName = $partner->tier_name ?? 'Bronze';
+        $tierName = $partner->tier->name ?? 'Bronze';
 
         $tierLimits = [
             'Bronze' => ['monthly_limit' => 0, 'can_approve' => false],
@@ -118,17 +115,21 @@ class LimitsController extends HomeController
 
         $limits = $tierLimits[$tierName] ?? $tierLimits['Bronze'];
 
-        // 현재 월 승인 수
+        // 현재 월 승인 수 (SQLite 호환 방식)
         $currentMonthApprovals = PartnerApplication::where('approved_by_uuid', $partner->user_uuid)
             ->where('application_status', 'approved')
-            ->whereMonth('approval_date', now()->month)
-            ->whereYear('approval_date', now()->year)
+            ->whereBetween('approval_date', [
+                now()->startOfMonth(),
+                now()->endOfMonth()
+            ])
             ->count();
 
-        // 이번 달 추천 수
+        // 이번 달 추천 수 (SQLite 호환 방식)
         $currentMonthRecommendations = PartnerApplication::whereJsonContains('referral_details->referrer_uuid', $partner->user_uuid)
-            ->whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year)
+            ->whereBetween('created_at', [
+                now()->startOfMonth(),
+                now()->endOfMonth()
+            ])
             ->count();
 
         return [
@@ -150,7 +151,7 @@ class LimitsController extends HomeController
      */
     private function getManagementCapacity(PartnerUser $partner): array
     {
-        $tierName = $partner->tier_name ?? 'Bronze';
+        $tierName = $partner->tier->name ?? 'Bronze';
 
         $tierCapacities = [
             'Bronze' => 0,
@@ -166,12 +167,13 @@ class LimitsController extends HomeController
             ->where('status', 'active')
             ->count();
 
-        // 관리 파트너들의 등급별 분포
+        // 관리 파트너들의 등급별 분포 (tier 관계 사용)
         $tierDistribution = PartnerUser::where('referrer_uuid', $partner->user_uuid)
             ->where('status', 'active')
-            ->groupBy('tier_name')
-            ->selectRaw('tier_name, COUNT(*) as count')
-            ->pluck('count', 'tier_name')
+            ->with('tier')
+            ->get()
+            ->groupBy('tier.name')
+            ->map->count()
             ->toArray();
 
         return [
@@ -223,19 +225,25 @@ class LimitsController extends HomeController
 
             $approvals = PartnerApplication::where('approved_by_uuid', $partner->user_uuid)
                 ->where('application_status', 'approved')
-                ->whereMonth('approval_date', $month->month)
-                ->whereYear('approval_date', $month->year)
+                ->whereBetween('approval_date', [
+                    $month->copy()->startOfMonth(),
+                    $month->copy()->endOfMonth()
+                ])
                 ->count();
 
             $recommendations = PartnerApplication::whereJsonContains('referral_details->referrer_uuid', $partner->user_uuid)
-                ->whereMonth('created_at', $month->month)
-                ->whereYear('created_at', $month->year)
+                ->whereBetween('created_at', [
+                    $month->copy()->startOfMonth(),
+                    $month->copy()->endOfMonth()
+                ])
                 ->count();
 
             $rejections = PartnerApplication::where('rejected_by_uuid', $partner->user_uuid)
                 ->where('application_status', 'rejected')
-                ->whereMonth('rejection_date', $month->month)
-                ->whereYear('rejection_date', $month->year)
+                ->whereBetween('rejection_date', [
+                    $month->copy()->startOfMonth(),
+                    $month->copy()->endOfMonth()
+                ])
                 ->count();
 
             $months[] = [
@@ -379,9 +387,10 @@ class LimitsController extends HomeController
      */
     private function getBestMonth(PartnerUser $partner): ?array
     {
+        // SQLite 호환 방식으로 수정
         $bestMonth = PartnerApplication::where('approved_by_uuid', $partner->user_uuid)
             ->where('application_status', 'approved')
-            ->selectRaw('YEAR(approval_date) as year, MONTH(approval_date) as month, COUNT(*) as count')
+            ->selectRaw("strftime('%Y', approval_date) as year, strftime('%m', approval_date) as month, COUNT(*) as count")
             ->groupBy('year', 'month')
             ->orderBy('count', 'desc')
             ->first();

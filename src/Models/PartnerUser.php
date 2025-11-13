@@ -28,6 +28,7 @@ class PartnerUser extends Model
         'shard_number',
         'email',
         'name',
+        'partner_code',
         'partner_tier_id',
         'partner_type_id',
         'status',
@@ -101,7 +102,7 @@ class PartnerUser extends Model
      */
     public function partnerTier()
     {
-        return $this->belongsTo(PartnerTier::class);
+        return $this->belongsTo(PartnerTier::class, 'partner_tier_id');
     }
 
     /**
@@ -109,7 +110,7 @@ class PartnerUser extends Model
      */
     public function partnerType()
     {
-        return $this->belongsTo(PartnerType::class);
+        return $this->belongsTo(PartnerType::class, 'partner_type_id');
     }
 
     /**
@@ -203,7 +204,7 @@ class PartnerUser extends Model
     /**
      * 모든 상위 파트너들 (조상들) - 트리 경로 기반
      */
-    public function ancestors()
+    public function getAncestors()
     {
         if (!$this->tree_path) {
             return collect();
@@ -211,6 +212,14 @@ class PartnerUser extends Model
 
         $ancestorIds = array_filter(explode('/', $this->tree_path));
         return static::whereIn('id', $ancestorIds)->orderBy('level')->get();
+    }
+
+    /**
+     * 상위 파트너들을 위한 속성 접근자
+     */
+    public function getAncestorsAttribute()
+    {
+        return $this->getAncestors();
     }
 
     /**
@@ -522,7 +531,7 @@ class PartnerUser extends Model
      */
     protected function updateAncestorRelationships(PartnerUser $newChild)
     {
-        $ancestors = $this->ancestors();
+        $ancestors = $this->getAncestors();
 
         foreach ($ancestors as $ancestor) {
             $depth = $newChild->level - $ancestor->level;

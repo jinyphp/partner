@@ -26,9 +26,8 @@ class ApproveController extends Controller
             return back()->with('error', $errorMessage);
         }
 
-        // 이미 파트너 회원인지 확인
-        $existingPartner = \Jiny\Partner\Models\PartnerUser::where('user_id', $application->user_id)
-            ->where('user_table', 'users')
+        // 이미 파트너 회원인지 확인 (UUID 기반)
+        $existingPartner = \Jiny\Partner\Models\PartnerUser::where('user_uuid', $application->user_uuid)
             ->exists();
 
         if ($existingPartner) {

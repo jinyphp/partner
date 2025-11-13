@@ -1,4 +1,4 @@
-@extends($layout ?? 'jiny-auth::layouts.home')
+@extends('jiny-partner::layouts.home')
 
 @section('title', $pageTitle ?? '파트너 재신청')
 

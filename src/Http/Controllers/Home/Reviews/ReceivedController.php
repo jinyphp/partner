@@ -2,12 +2,12 @@
 
 namespace Jiny\Partner\Http\Controllers\Home\Reviews;
 
-use Jiny\Partner\Http\Controllers\Home\HomeController;
+use Jiny\Partner\Http\Controllers\PartnerController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Jiny\Partner\Models\PartnerUser;
 
-class ReceivedController extends HomeController
+class ReceivedController extends PartnerController
 {
     /**
      * 받은 리뷰 목록
@@ -15,24 +15,34 @@ class ReceivedController extends HomeController
     public function __invoke(Request $request)
     {
         try {
-            // JWT 인증 확인
+            // 세션 인증 확인
             $user = $this->auth($request);
             if (!$user) {
-                return $this->errorResponse('인증이 필요합니다.');
+                return redirect()->route('login')->with('error', '로그인이 필요합니다.');
             }
 
-            // 파트너 사용자 정보 조회
-            $partnerUser = PartnerUser::where('user_id', $user->id ?? $user['id'])
-                ->where('status', 'active')
-                ->first();
+            // 파트너 사용자 정보 조회 (UUID 기반, 샤딩 지원)
+            $partnerUser = PartnerUser::with('tier')->where('user_uuid', $user->uuid)->first();
 
             if (!$partnerUser) {
-                return $this->errorResponse('파트너 권한이 없습니다.');
+                // 파트너 신청 정보 확인
+                $partnerApplication = \Jiny\Partner\Models\PartnerApplication::where('user_uuid', $user->uuid)
+                    ->latest()
+                    ->first();
+
+                if ($partnerApplication) {
+                    return redirect()->route('home.partner.regist.status', $partnerApplication->id)
+                        ->with('info', '파트너 신청이 아직 처리 중입니다.');
+                } else {
+                    return redirect()->route('home.partner.intro')
+                        ->with('info', '파트너 프로그램에 먼저 가입해 주세요.');
+                }
             }
 
             // 필터링 옵션
             $rating = $request->get('rating', 'all'); // all, 5, 4, 3, 2, 1
             $period = $request->get('period', 'all'); // all, this_month, last_month, this_year
+            $visibility = $request->get('visibility', 'all'); // all, public, private
             $perPage = $request->get('per_page', 20);
 
             // 받은 리뷰 목록 (임시 데이터 - 실제로는 리뷰 모델에서 조회)
@@ -63,10 +73,17 @@ class ReceivedController extends HomeController
                 $receivedReviews = $receivedReviews->where('rating', $rating);
             }
 
-            // 통계 정보
-            $stats = [
-                'total_count' => $receivedReviews->count(),
+            if ($visibility !== 'all') {
+                $isPublic = $visibility === 'public';
+                $receivedReviews = $receivedReviews->where('is_public', $isPublic);
+            }
+
+            // 통계 정보 (뷰에서 기대하는 형식으로 맞춤)
+            $reviewStats = [
+                'total_received' => $receivedReviews->count(),
                 'average_rating' => $receivedReviews->avg('rating') ?? 0,
+                'five_star_count' => $receivedReviews->where('rating', 5)->count(),
+                'this_month_count' => $receivedReviews->where('created_at', '>=', now()->startOfMonth())->count(),
                 'rating_distribution' => [
                     5 => $receivedReviews->where('rating', 5)->count(),
                     4 => $receivedReviews->where('rating', 4)->count(),
@@ -82,9 +99,10 @@ class ReceivedController extends HomeController
                 'user' => $user,
                 'partnerUser' => $partnerUser,
                 'receivedReviews' => $receivedReviews,
-                'stats' => $stats,
+                'reviewStats' => $reviewStats,
                 'currentRating' => $rating,
                 'currentPeriod' => $period,
+                'currentVisibility' => $visibility,
                 'pageTitle' => '받은 리뷰'
             ];
 
@@ -95,7 +113,15 @@ class ReceivedController extends HomeController
             return view('jiny-partner::home.reviews.received', $viewData);
 
         } catch (\Exception $e) {
-            return $this->errorResponse('받은 리뷰를 불러오는 중 오류가 발생했습니다.', ['error' => $e->getMessage()]);
+            \Log::error('Partner reviews received error: ' . $e->getMessage(), [
+                'user_id' => $user->id ?? 'unknown',
+                'user_uuid' => $user->uuid ?? 'unknown',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->route('home.partner.reviews.index')
+                ->with('error', '받은 리뷰를 불러오는 중 오류가 발생했습니다.');
         }
     }
 }

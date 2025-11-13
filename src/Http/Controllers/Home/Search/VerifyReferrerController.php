@@ -2,14 +2,14 @@
 
 namespace Jiny\Partner\Http\Controllers\Home\Search;
 
-use Jiny\Partner\Http\Controllers\Home\HomeController;
+use Jiny\Partner\Http\Controllers\PartnerController;
 use Jiny\Partner\Models\PartnerUser;
 use Jiny\Partner\Services\PartnerActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class VerifyReferrerController extends HomeController
+class VerifyReferrerController extends PartnerController
 {
     protected $activityLogService;
 

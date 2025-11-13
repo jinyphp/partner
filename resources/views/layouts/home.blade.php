@@ -4,6 +4,7 @@
     <!-- Required meta tags -->
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="csrf-token" content="{{ csrf_token() }}">
 
 <!-- Favicon icon-->
 <link rel="shortcut icon" type="image/x-icon" href="{{ asset('assets/images/favicon/favicon.ico') }}" />
@@ -23,6 +24,9 @@
 <link rel="stylesheet" href="{{ asset('assets/libs/tiny-slider/dist/tiny-slider.css') }}" />
 
 @stack('styles')
+
+{{-- Livewire Styles --}}
+@livewireStyles
 
 <title>@yield('title', 'Dashboard') | Geeks - Bootstrap 5 Template</title>
   </head>
@@ -53,6 +57,9 @@
 <!-- Theme JS -->
 
 @stack('scripts')
+
+{{-- Livewire Scripts --}}
+@livewireScripts
 
   </body>
 </html>

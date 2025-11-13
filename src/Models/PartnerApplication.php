@@ -5,7 +5,7 @@ namespace Jiny\Partner\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 class PartnerApplication extends Model
 {
@@ -52,7 +52,17 @@ class PartnerApplication extends Model
         'referrer_relationship',
         'meeting_date',
         'meeting_location',
-        'introduction_method'
+        'introduction_method',
+
+        // 추천 파트너 및 계층 구조 관련 필드들 (StoreController에서 사용)
+        'referrer_partner_id',
+        'referral_details',
+        'expected_tier_level',
+        'expected_tier_path',
+        'expected_commission_rate',
+        'referral_bonus_eligible',
+        'referral_bonus_amount',
+        'referral_registered_at'
     ];
 
     protected $casts = [
@@ -68,31 +78,101 @@ class PartnerApplication extends Model
         'submitted_at' => 'datetime',
         'meeting_date' => 'date',
         'preferred_work_areas' => 'array',
-        'availability_schedule' => 'array'
+        'availability_schedule' => 'array',
+
+        // 추천 관련 필드 캐스팅
+        'referral_details' => 'array',
+        'expected_commission_rate' => 'decimal:4',
+        'referral_bonus_amount' => 'decimal:2',
+        'referral_bonus_eligible' => 'boolean',
+        'referral_registered_at' => 'datetime'
     ];
 
     /**
-     * 지원자 사용자
+     * 지원자 사용자 관계 (Eloquent 관계)
      */
     public function user()
     {
-        return $this->belongsTo(User::class);
+        // 기본 users 테이블에서 조회
+        return $this->belongsTo(\App\Models\User::class, 'user_id');
     }
 
     /**
-     * 승인 처리자
+     * 지원자 사용자 (샤드 테이블에서 동적 조회)
+     */
+    public function getUser()
+    {
+        $userTable = $this->shard_number ? 'user_' . str_pad($this->shard_number, 3, '0', STR_PAD_LEFT) : 'users';
+
+        try {
+            return DB::table($userTable)->where('id', $this->user_id)->first();
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * 승인 처리자 관계 (Eloquent 관계)
      */
     public function approver()
     {
-        return $this->belongsTo(User::class, 'approved_by');
+        return $this->belongsTo(\App\Models\User::class, 'approved_by');
     }
 
     /**
-     * 거절 처리자
+     * 거절 처리자 관계 (Eloquent 관계)
      */
     public function rejector()
     {
-        return $this->belongsTo(User::class, 'rejected_by');
+        return $this->belongsTo(\App\Models\User::class, 'rejected_by');
+    }
+
+    /**
+     * 승인 처리자 (관리자)
+     */
+    public function getApprover()
+    {
+        if (!$this->approved_by) {
+            return null;
+        }
+
+        try {
+            return DB::table('users')->where('id', $this->approved_by)->first();
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * 거절 처리자 (관리자)
+     */
+    public function getRejector()
+    {
+        if (!$this->rejected_by) {
+            return null;
+        }
+
+        try {
+            return DB::table('users')->where('id', $this->rejected_by)->first();
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * 추천 파트너
+     */
+    public function referrerPartner()
+    {
+        return $this->belongsTo(PartnerUser::class, 'referrer_partner_id');
+    }
+
+    /**
+     * 면접 기록들
+     */
+    public function interviews()
+    {
+        return $this->hasMany(PartnerInterview::class, 'application_id');
     }
 
     /**
@@ -133,6 +213,17 @@ class PartnerApplication extends Model
      */
     public function approve($adminId)
     {
+        // 이미 승인된 경우 기존 파트너 반환
+        if ($this->application_status === 'approved') {
+            $existingPartner = PartnerUser::where('user_id', $this->user_id)
+                ->where('user_table', $this->shard_number ? 'user_' . str_pad($this->shard_number, 3, '0', STR_PAD_LEFT) : 'users')
+                ->first();
+
+            if ($existingPartner) {
+                return $existingPartner;
+            }
+        }
+
         $this->update([
             'application_status' => 'approved',
             'approval_date' => now(),
@@ -192,8 +283,45 @@ class PartnerApplication extends Model
             throw new \Exception('기본 파트너 등급이 설정되지 않았습니다.');
         }
 
-        // 사용자 정보 조회
-        $user = $this->user;
+        // 사용자 정보 조회 (샤드 테이블에서 직접 조회 시도, 실패 시 지원서 정보 사용)
+        $user = null;
+        $userTable = $this->shard_number ? 'user_' . str_pad($this->shard_number, 3, '0', STR_PAD_LEFT) : 'users';
+
+        try {
+            $user = DB::table($userTable)->where('id', $this->user_id)->first();
+        } catch (\Exception $e) {
+            // 샤드 테이블이 존재하지 않거나 접근 실패 시 지원서 정보 사용
+            \Log::info('샤드 테이블 조회 실패, 지원서 정보 사용', [
+                'user_table' => $userTable,
+                'user_id' => $this->user_id,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        // 폴백으로 getUser 메서드를 통한 사용자 조회 시도
+        if (!$user) {
+            $user = $this->getUser();
+        }
+
+        // 추천인 파트너 정보 조회
+        $referrerPartner = null;
+        $parentId = null;
+        $level = 0;
+        $treePath = '';
+        $canRecruit = true;
+
+        if ($this->referrer_partner_id) {
+            $referrerPartner = PartnerUser::find($this->referrer_partner_id);
+
+            if ($referrerPartner) {
+                $parentId = $referrerPartner->id;
+                $level = $referrerPartner->level + 1;
+                $treePath = $referrerPartner->tree_path ? $referrerPartner->tree_path . '/' . $referrerPartner->id : '/' . $referrerPartner->id;
+
+                // 하위 파트너의 모집 권한은 상위 파트너의 등급과 설정에 따라 결정
+                $canRecruit = $referrerPartner->partnerTier && $referrerPartner->partnerTier->can_recruit;
+            }
+        }
 
         // 프로필 데이터 구성
         $profileData = [
@@ -205,6 +333,12 @@ class PartnerApplication extends Model
             'availability_schedule' => $this->availability_schedule,
             'expected_hourly_rate' => $this->expected_hourly_rate,
             'approved_at' => now()->toISOString(),
+            'referrer_info' => $referrerPartner ? [
+                'referrer_id' => $referrerPartner->id,
+                'referrer_code' => $referrerPartner->partner_code,
+                'referrer_name' => $referrerPartner->name,
+                'referral_date' => now()->toISOString()
+            ] : null,
             'status_history' => [
                 [
                     'status' => 'active',
@@ -215,13 +349,14 @@ class PartnerApplication extends Model
             ]
         ];
 
-        return PartnerUser::create([
+        // 새 파트너 계정 생성
+        $newPartner = PartnerUser::create([
             'user_id' => $this->user_id,
-            'user_table' => 'users', // 기본적으로 메인 users 테이블
-            'user_uuid' => $user->uuid ?? null,
-            'shard_number' => 0, // 메인 테이블이므로 0
-            'email' => $user->email,
-            'name' => $user->name,
+            'user_table' => $this->shard_number ? 'user_' . str_pad($this->shard_number, 3, '0', STR_PAD_LEFT) : 'users',
+            'user_uuid' => $this->user_uuid ?? ($user ? $user->uuid ?? null : null),
+            'shard_number' => $this->shard_number ?? 0,
+            'email' => $this->personal_info['email'] ?? ($user ? $user->email ?? null : null),
+            'name' => $this->personal_info['name'] ?? ($user ? $user->name ?? null : null),
             'partner_tier_id' => $defaultTier->id,
             'status' => 'active',
             'total_completed_jobs' => 0,
@@ -232,8 +367,70 @@ class PartnerApplication extends Model
             'tier_assigned_at' => now(),
             'profile_data' => $profileData,
             'admin_notes' => '파트너 지원서 승인을 통해 등록됨',
-            'created_by' => $this->approved_by
+            'created_by' => $this->approved_by,
+
+            // 계층 구조 관련 필드
+            'parent_id' => $parentId,
+            'level' => $level,
+            'tree_path' => $treePath,
+            'children_count' => 0,
+            'total_children_count' => 0,
+            'max_children' => $defaultTier->max_children ?? 10,
+            'personal_commission_rate' => $defaultTier->default_commission_rate ?? 0,
+            'management_bonus_rate' => $defaultTier->default_bonus_rate ?? 0,
+            'discount_rate' => $defaultTier->default_discount_rate ?? 0,
+            'monthly_sales' => 0,
+            'total_sales' => 0,
+            'team_sales' => 0,
+            'earned_commissions' => 0,
+            'can_recruit' => $canRecruit,
+            'last_activity_at' => now(),
+            'network_settings' => [
+                'recruitment_enabled' => $canRecruit,
+                'commission_sharing' => true,
+                'auto_tier_upgrade' => true
+            ]
         ]);
+
+        // 추천인이 있는 경우 계층 구조 설정
+        if ($referrerPartner && $newPartner) {
+            try {
+                // 추천인의 하위 파트너 수 증가
+                $referrerPartner->increment('children_count');
+                $referrerPartner->updateTotalChildrenCount();
+
+                // 관리자 노트에 추천 관계 기록
+                $adminNote = $newPartner->admin_notes . "\n추천인: {$referrerPartner->name} ({$referrerPartner->partner_code})";
+                $newPartner->update(['admin_notes' => $adminNote]);
+
+                // 네트워크 관계 생성 (만약 PartnerNetworkRelationship 모델이 존재한다면)
+                if (class_exists('Jiny\\Partner\\Models\\PartnerNetworkRelationship')) {
+                    \Jiny\Partner\Models\PartnerNetworkRelationship::create([
+                        'parent_id' => $referrerPartner->id,
+                        'child_id' => $newPartner->id,
+                        'depth' => 1,
+                        'relationship_path' => $referrerPartner->id . '/' . $newPartner->id,
+                        'recruiter_id' => $this->approved_by,
+                        'recruited_at' => now(),
+                        'recruitment_details' => [
+                            'recruited_by_tier' => $referrerPartner->partnerTier->tier_name ?? null,
+                            'recruited_to_tier' => $newPartner->partnerTier->tier_name ?? null,
+                            'recruitment_date' => now()->toDateString()
+                        ]
+                    ]);
+                }
+
+            } catch (\Exception $e) {
+                // 계층 구조 설정 실패 시 로그 기록하지만 파트너 생성은 유지
+                \Log::warning('파트너 계층 구조 설정 실패', [
+                    'new_partner_id' => $newPartner->id,
+                    'referrer_partner_id' => $referrerPartner->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        return $newPartner;
     }
 
 

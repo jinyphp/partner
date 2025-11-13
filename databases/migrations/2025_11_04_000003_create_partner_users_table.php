@@ -31,20 +31,23 @@ return new class extends Migration
 
             // 사용자 정보 (샤딩 지원)
             $table->unsignedBigInteger('user_id'); // 사용자 ID
-            $table->string('user_table', 20)->default('users'); // 사용자 테이블명 (users_001, users_002 등)
+            $table->string('user_table', 20)->default('users_001'); // 사용자 테이블명 (users_001, users_002 등)
             $table->string('user_uuid', 36)->nullable(); // 사용자 UUID
             $table->unsignedTinyInteger('shard_number')->nullable(); // 샤딩 번호 (001, 002 등)
             $table->string('email', 191); // 사용자 이메일 (검색용 캐시)
             $table->string('name', 100); // 사용자 이름 (캐시)
 
             // 파트너 등급 정보
-            $table->foreignId('partner_tier_id')->constrained('partner_tiers')->onDelete('cascade');
+            $table->foreignId('partner_tier_id')
+                ->constrained('partner_tiers')
+                ->onDelete('cascade');
 
             // 파트너 타입 정보 (전문성 구분: 세일즈, 기술지원, 마케팅 등)
             $table->foreignId('partner_type_id')
                   ->nullable()
                   ->constrained('partner_types')
                   ->onDelete('set null'); // 타입 삭제 시 NULL로 설정
+
 
             // ====================================================================
             // 계층구조 관리 (Hierarchy Management)
@@ -54,6 +57,7 @@ return new class extends Migration
             $table->string('tree_path', 500)->nullable()->comment('트리 경로 (예: 1/5/12)');
             $table->integer('children_count')->default(0)->comment('직접 하위 파트너 수');
             $table->integer('total_children_count')->default(0)->comment('전체 하위 파트너 수');
+
 
             // ====================================================================
             // 네트워크 관리 (Network Management)

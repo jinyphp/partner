@@ -3,6 +3,7 @@
 namespace Jiny\Partner\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 class JinyPartnerServiceProvider extends ServiceProvider
 {
@@ -25,9 +26,13 @@ class JinyPartnerServiceProvider extends ServiceProvider
         // 라우트 로드
         $this->loadRoutesFrom(__DIR__.'/../../routes/admin.php');
         $this->loadRoutesFrom(__DIR__.'/../../routes/home.php');
+        $this->loadRoutesFrom(__DIR__.'/../../routes/api.php');
 
         // 뷰 로드
         $this->loadViewsFrom(__DIR__.'/../../resources/views', 'jiny-partner');
+
+        // Livewire 컴포넌트 등록
+        Livewire::component('jiny-partner::customer', \Jiny\Partner\Http\Livewire\Customer::class);
 
         // 설정 파일 발행 (필요시)
         if ($this->app->runningInConsole()) {

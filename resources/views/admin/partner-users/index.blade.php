@@ -36,25 +36,11 @@
                             </div>
                         </div>
                         <div class="flex-grow-1 ms-3">
-                            <h6 class="mb-0 text-muted">전체 파트너</h6>
-                            <h3 class="mb-0 fw-bold">{{ $statistics['total'] ?? 0 }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <div class="bg-success bg-gradient rounded-circle p-3 stat-circle">
-                                <i class="fe fe-check-circle text-white"></i>
-                            </div>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="mb-0 text-muted">활성 파트너</h6>
-                            <h3 class="mb-0 fw-bold">{{ $statistics['active'] ?? 0 }}</h3>
+                            <h6 class="mb-0 text-muted">파트너 회원</h6>
+                            <h3 class="mb-0 fw-bold">
+                                <span class="text-success">{{ $statistics['active'] ?? 0 }}</span> / {{ $statistics['total'] ?? 0 }}
+                            </h3>
+                            <small class="text-muted">활성 / 전체</small>
                         </div>
                     </div>
                 </div>
@@ -66,12 +52,12 @@
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
                             <div class="bg-warning bg-gradient rounded-circle p-3 stat-circle">
-                                <i class="fe fe-clock text-white"></i>
+                                <i class="fe fe-dollar-sign text-white"></i>
                             </div>
                         </div>
                         <div class="flex-grow-1 ms-3">
-                            <h6 class="mb-0 text-muted">대기 중</h6>
-                            <h3 class="mb-0 fw-bold">{{ $statistics['pending'] ?? 0 }}</h3>
+                            <h6 class="mb-0 text-muted">총 커미션</h6>
+                            <h3 class="mb-0 fw-bold">{{ number_format($statistics['total_commissions'] ?? 0) }}원</h3>
                         </div>
                     </div>
                 </div>
@@ -94,45 +80,25 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- 추가 통계 카드 -->
-    <div class="row mb-4">
-        <div class="col-md-6">
+        <div class="col-md-3">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
-                            <div class="bg-warning bg-gradient rounded-circle p-3 stat-circle">
-                                <i class="fe fe-dollar-sign text-white"></i>
-                            </div>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="mb-0 text-muted">총 커미션</h6>
-                            <h3 class="mb-0 fw-bold">{{ number_format($statistics['total_commissions'] ?? 0) }}원</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <div class="bg-danger bg-gradient rounded-circle p-3 stat-circle">
+                            <div class="bg-success bg-gradient rounded-circle p-3 stat-circle">
                                 <i class="fe fe-star text-white"></i>
                             </div>
                         </div>
                         <div class="flex-grow-1 ms-3">
                             <h6 class="mb-0 text-muted">평균 평점</h6>
-                            <h3 class="mb-0 fw-bold">{{ $statistics['avg_rating'] ?? '-' }}</h3>
+                            <h3 class="mb-0 fw-bold">{{ number_format($statistics['average_rating'] ?? 0, 1) }}</h3>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
 
     <!-- 필터 -->
     <div class="card mb-4">
@@ -428,6 +394,29 @@
 /* 카드 그림자 효과 */
 .shadow-sm {
     box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+/* 카드 높이 균등화 */
+.row.mb-4 {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.row.mb-4 > [class*="col-"] {
+    display: flex;
+    flex-direction: column;
+}
+
+.row.mb-4 .card {
+    flex: 1;
+    height: 100%;
+}
+
+.row.mb-4 .card-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 100px;
 }
 </style>
 @endpush

@@ -1,4 +1,4 @@
-@extends('jiny-site::layouts.home')
+@extends('jiny-partner::layouts.home')
 
 @section('title', '수익 계산기')
 

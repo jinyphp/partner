@@ -9,10 +9,13 @@ use Illuminate\Http\Request;
 //use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Log;
 //use Jiny\Auth\Http\Controllers\Traits\JWTAuthTrait;
 
-use Jiny\Auth\Http\Controllers\HomeController;
-class StoreController extends HomeController
+use Jiny\Partner\Http\Controllers\PartnerController;
+//use Jiny\Auth\Http\Controllers\HomeController;
+class StoreController extends PartnerController
 {
 
     /**
@@ -112,9 +115,10 @@ class StoreController extends HomeController
                 'application_status' => $request->input('submit_type') === 'draft' ? 'draft' : 'submitted',
                 'personal_info' => [
                     'name' => $validatedData['name'],
+                    'email' => $user->email,
                     'phone' => $validatedData['phone'],
-                    'address' => $validatedData['address'],
-                    'birth_year' => $validatedData['birth_year']
+                    'country' => $validatedData['country'],
+                    'address' => $validatedData['address']
                 ],
                 'experience_info' => [
                     'total_years' => $validatedData['total_years'] ?? null,
@@ -150,56 +154,106 @@ class StoreController extends HomeController
                 'documents' => $documents
             ];
 
-            // 추천 파트너 정보 처리
-            if (!empty($validatedData['referral_code']) || $validatedData['referral_source'] !== 'self_application') {
-                // 추천 코드로 파트너 검색
-                $referrerPartner = null;
-                if (!empty($validatedData['referral_code'])) {
-                    $referrerPartner = PartnerUser::where('referral_code', $validatedData['referral_code'])
-                        ->where('status', 'active')
-                        ->first();
-                }
+            // 추천 파트너 정보 처리 (세션 기반)
+            $referrerPartnerId = Session::get('referrer_partner_id');
+            $referrerPartnerCode = Session::get('referrer_partner_code');
+            $referrerInfo = Session::get('referrer_info');
 
-                // 추천 파트너 정보 설정
-                $applicationData['referrer_partner_id'] = $referrerPartner ? $referrerPartner->id : null;
-                $applicationData['referral_code'] = $validatedData['referral_code'] ?? null;
-                $applicationData['referral_source'] = $validatedData['referral_source'];
-                $applicationData['referral_registered_at'] = now();
-                $applicationData['referral_bonus_eligible'] = $referrerPartner ? true : false;
+            if ($referrerPartnerId) {
+                // 세션에서 추천인 정보가 있는 경우 (ReferralController를 통한 접근)
+                $referrerPartner = PartnerUser::find($referrerPartnerId);
 
-                // 추천 상세 정보 JSON 구성
-                $referralDetails = [];
-                if (!empty($validatedData['referrer_name'])) {
-                    $referralDetails['referrer_name'] = $validatedData['referrer_name'];
-                }
-                if (!empty($validatedData['referrer_contact'])) {
-                    $referralDetails['referrer_contact'] = $validatedData['referrer_contact'];
-                }
-                if (!empty($validatedData['referrer_relationship'])) {
-                    $referralDetails['referrer_relationship'] = $validatedData['referrer_relationship'];
-                }
-                if (!empty($validatedData['meeting_date'])) {
-                    $referralDetails['meeting_date'] = $validatedData['meeting_date'];
-                }
-                if (!empty($validatedData['meeting_location'])) {
-                    $referralDetails['meeting_location'] = $validatedData['meeting_location'];
-                }
-                if (!empty($validatedData['introduction_method'])) {
-                    $referralDetails['introduction_method'] = $validatedData['introduction_method'];
-                }
-                if (!empty($validatedData['motivation'])) {
-                    $referralDetails['motivation'] = $validatedData['motivation'];
-                }
+                if ($referrerPartner && $referrerPartner->status === 'active') {
+                    Log::info('StoreController: Processing referral from session', [
+                        'referrer_partner_id' => $referrerPartnerId,
+                        'referrer_partner_code' => $referrerPartnerCode,
+                        'referrer_name' => $referrerInfo['name'] ?? 'Unknown',
+                        'applicant_uuid' => $user->uuid
+                    ]);
 
-                if (!empty($referralDetails)) {
+                    // 추천 파트너 정보 설정
+                    $applicationData['referrer_partner_id'] = $referrerPartner->id;
+                    $applicationData['referral_code'] = $referrerPartnerCode;
+                    $applicationData['referral_source'] = 'online_link'; // 파트너 코드를 통한 온라인 링크 추천
+                    $applicationData['referral_registered_at'] = now();
+                    $applicationData['referral_bonus_eligible'] = true;
+
+                    // 추천 상세 정보 JSON 구성 (세션에서)
+                    $referralDetails = [
+                        'referrer_name' => $referrerInfo['name'] ?? $referrerPartner->name,
+                        'referrer_email' => $referrerInfo['email'] ?? $referrerPartner->email,
+                        'referrer_tier' => $referrerInfo['tier'] ?? 'Unknown',
+                        'referral_method' => 'partner_code_url',
+                        'referral_timestamp' => now()->toISOString()
+                    ];
                     $applicationData['referral_details'] = $referralDetails;
-                }
 
-                // 계층 구조 예상 정보 계산
-                if ($referrerPartner) {
-                    $applicationData['expected_tier_level'] = $referrerPartner->level + 1;
-                    $applicationData['expected_tier_path'] = $referrerPartner->tree_path . '/' . $referrerPartner->id;
-                    $applicationData['expected_commission_rate'] = $referrerPartner->personal_commission_rate * 0.8; // 예시: 80% 적용
+                    // 계층 구조 정보 계산
+                    $applicationData['expected_tier_level'] = ($referrerPartner->level ?? 0) + 1;
+                    $applicationData['expected_tier_path'] = ($referrerPartner->tree_path ?? '') . '/' . $referrerPartner->id;
+
+                    // 커미션 계산 (예시: 상위 파트너의 80% 적용)
+                    $personalCommissionRate = $referrerPartner->personal_commission_rate ?? 0.10; // 기본 10%
+                    $applicationData['expected_commission_rate'] = $personalCommissionRate * 0.8;
+
+                    Log::info('StoreController: Referral hierarchy calculated', [
+                        'expected_tier_level' => $applicationData['expected_tier_level'],
+                        'expected_tier_path' => $applicationData['expected_tier_path'],
+                        'expected_commission_rate' => $applicationData['expected_commission_rate']
+                    ]);
+                }
+            } else {
+                // 폼 데이터에서 추천 정보 처리 (기존 로직 유지)
+                if (!empty($validatedData['referral_code']) || ($validatedData['referral_source'] ?? 'self_application') !== 'self_application') {
+                    // 추천 코드로 파트너 검색
+                    $referrerPartner = null;
+                    if (!empty($validatedData['referral_code'])) {
+                        $referrerPartner = PartnerUser::where('partner_code', $validatedData['referral_code'])
+                            ->where('status', 'active')
+                            ->first();
+                    }
+
+                    // 추천 파트너 정보 설정
+                    $applicationData['referrer_partner_id'] = $referrerPartner ? $referrerPartner->id : null;
+                    $applicationData['referral_code'] = $validatedData['referral_code'] ?? null;
+                    $applicationData['referral_source'] = $validatedData['referral_source'] ?? 'self_application';
+                    $applicationData['referral_registered_at'] = now();
+                    $applicationData['referral_bonus_eligible'] = $referrerPartner ? true : false;
+
+                    // 추천 상세 정보 JSON 구성
+                    $referralDetails = [];
+                    if (!empty($validatedData['referrer_name'])) {
+                        $referralDetails['referrer_name'] = $validatedData['referrer_name'];
+                    }
+                    if (!empty($validatedData['referrer_contact'])) {
+                        $referralDetails['referrer_contact'] = $validatedData['referrer_contact'];
+                    }
+                    if (!empty($validatedData['referrer_relationship'])) {
+                        $referralDetails['referrer_relationship'] = $validatedData['referrer_relationship'];
+                    }
+                    if (!empty($validatedData['meeting_date'])) {
+                        $referralDetails['meeting_date'] = $validatedData['meeting_date'];
+                    }
+                    if (!empty($validatedData['meeting_location'])) {
+                        $referralDetails['meeting_location'] = $validatedData['meeting_location'];
+                    }
+                    if (!empty($validatedData['introduction_method'])) {
+                        $referralDetails['introduction_method'] = $validatedData['introduction_method'];
+                    }
+                    if (!empty($validatedData['motivation'])) {
+                        $referralDetails['motivation'] = $validatedData['motivation'];
+                    }
+
+                    if (!empty($referralDetails)) {
+                        $applicationData['referral_details'] = $referralDetails;
+                    }
+
+                    // 계층 구조 예상 정보 계산
+                    if ($referrerPartner) {
+                        $applicationData['expected_tier_level'] = ($referrerPartner->level ?? 0) + 1;
+                        $applicationData['expected_tier_path'] = ($referrerPartner->tree_path ?? '') . '/' . $referrerPartner->id;
+                        $applicationData['expected_commission_rate'] = ($referrerPartner->personal_commission_rate ?? 0.10) * 0.8; // 예시: 80% 적용
+                    }
                 }
             }
 
@@ -213,8 +267,24 @@ class StoreController extends HomeController
 
             \Log::info('StoreController: Application created successfully', [
                 'application_id' => $application->id,
-                'status' => $application->application_status
+                'status' => $application->application_status,
+                'has_referrer' => isset($applicationData['referrer_partner_id'])
             ]);
+
+            // 추천인 정보 세션 정리
+            $referralMessage = '';
+            if ($referrerPartnerId) {
+                $referrerName = $referrerInfo['name'] ?? $referrerPartner->name ?? '추천인';
+                $referralMessage = " ('{$referrerName}' 파트너의 추천)";
+
+                // 추천 관련 세션 데이터 정리
+                Session::forget(['referrer_partner_id', 'referrer_partner_code', 'referrer_info']);
+
+                Log::info('StoreController: Referral session data cleared', [
+                    'application_id' => $application->id,
+                    'referrer_name' => $referrerName
+                ]);
+            }
 
             DB::commit();
 
@@ -224,7 +294,7 @@ class StoreController extends HomeController
                     \Log::info('StoreController: JSON response (draft)');
                     return response()->json([
                         'success' => true,
-                        'message' => '신청서가 임시저장되었습니다. 언제든지 이어서 작성하실 수 있습니다.',
+                        'message' => '신청서가 임시저장되었습니다. 언제든지 이어서 작성하실 수 있습니다.' . $referralMessage,
                         'application_id' => $application->id,
                         'status' => 'draft',
                         'redirect_url' => route('home.partner.regist.index')
@@ -235,10 +305,10 @@ class StoreController extends HomeController
                     ]);
                     return response()->json([
                         'success' => true,
-                        'message' => '파트너 신청서가 성공적으로 제출되었습니다! 검토 후 연락드리겠습니다.',
+                        'message' => '파트너 신청서가 성공적으로 제출되었습니다' . $referralMessage . '! 검토 후 연락드리겠습니다.',
                         'application_id' => $application->id,
                         'status' => 'submitted',
-                        'redirect_url' => route('home.partner.regist.index')
+                        'redirect_url' => route('home.partner.regist.status', $application->id)
                     ]);
                 }
             }
@@ -247,14 +317,14 @@ class StoreController extends HomeController
             if ($application->application_status === 'draft') {
                 \Log::info('StoreController: Redirecting to index (draft)');
                 return redirect()->route('home.partner.regist.index')
-                    ->with('success', '신청서가 임시저장되었습니다. 언제든지 이어서 작성하실 수 있습니다.');
+                    ->with('success', '신청서가 임시저장되었습니다. 언제든지 이어서 작성하실 수 있습니다.' . $referralMessage);
             } else {
                 \Log::info('StoreController: Redirecting to status page', [
                     'application_id' => $application->id,
                     'status_route' => route('home.partner.regist.status', $application->id)
                 ]);
                 return redirect()->route('home.partner.regist.status', $application->id)
-                    ->with('success', '파트너 신청서가 성공적으로 제출되었습니다! 검토 후 연락드리겠습니다.');
+                    ->with('success', '파트너 신청서가 성공적으로 제출되었습니다' . $referralMessage . '! 검토 후 연락드리겠습니다.');
             }
 
         } catch (\Exception $e) {
@@ -382,8 +452,8 @@ class StoreController extends HomeController
             // 개인정보
             'name' => 'required|string|max:100',
             'phone' => 'required|string|regex:/^010-\d{4}-\d{4}$/',
+            'country' => 'required|string|in:KR,US,JP,CN,CA,AU,GB,DE,FR,SG,OTHER',
             'address' => 'required|string|max:255',
-            'birth_year' => 'required|integer|min:1950|max:' . (date('Y') - 18),
 
             // 경력정보
             'total_years' => 'nullable|integer|min:0|max:50',
@@ -444,9 +514,9 @@ class StoreController extends HomeController
             'name.required' => '이름을 입력해주세요.',
             'phone.required' => '휴대폰 번호를 입력해주세요.',
             'phone.regex' => '휴대폰 번호 형식이 올바르지 않습니다. (010-0000-0000)',
+            'country.required' => '국가를 선택해주세요.',
+            'country.in' => '유효한 국가를 선택해주세요.',
             'address.required' => '주소를 입력해주세요.',
-            'birth_year.required' => '출생년도를 입력해주세요.',
-            'birth_year.max' => '만 18세 이상만 신청 가능합니다.',
             'education_level.required' => '학력을 선택해주세요.',
             'emergency_contact_name.required' => '비상연락처 이름을 입력해주세요.',
             'emergency_contact_phone.required' => '비상연락처 전화번호를 입력해주세요.',

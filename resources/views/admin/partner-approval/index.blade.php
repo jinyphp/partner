@@ -194,7 +194,7 @@
                             <tr>
                                 <th width="200">지원자 정보</th>
                                 <th width="100">상태</th>
-                                <th width="100">희망 시급</th>
+                                <th width="150">추천인 정보</th>
                                 <th width="80">경력</th>
                                 <th width="100">지원일</th>
                                 <th width="80">완성도</th>
@@ -207,7 +207,7 @@
                                 <td>
                                     <div>
                                         <strong>{{ $application->personal_info['name'] ?? $application->user->name ?? 'Unknown' }}</strong>
-                                        <br><small class="text-muted">{{ $application->user->email ?? 'Unknown' }}</small>
+                                        <br><small class="text-muted">{{ $application->personal_info['email'] ?? $application->user->email ?? 'No email' }}</small>
                                     </div>
                                 </td>
                                 <td>
@@ -228,7 +228,14 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <strong>{{ number_format($application->expected_hourly_rate ?? 0) }}원</strong>
+                                    @if($application->referrerPartner)
+                                        <div class="small">
+                                            <strong class="text-primary">{{ $application->referrerPartner->partner_code ?? 'N/A' }}</strong>
+                                            <br><small class="text-muted">{{ $application->referrerPartner->name ?? '알 수 없음' }}</small>
+                                        </div>
+                                    @else
+                                        <small class="text-muted">직접 신청</small>
+                                    @endif
                                 </td>
                                 <td>
                                     {{ $application->experience_info['total_years'] ?? 0 }}년

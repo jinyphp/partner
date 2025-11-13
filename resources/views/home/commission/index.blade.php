@@ -1,4 +1,4 @@
-@extends('jiny-site::layouts.home')
+@extends('jiny-partner::layouts.home')
 
 @section('title', $pageTitle ?? '커미션 현황')
 
@@ -110,7 +110,7 @@
                             <p class="mb-0 text-muted">{{ $commission->created_at->format('Y-m-d H:i') }}</p>
                         </div>
                         <div class="text-end">
-                            <h6 class="mb-0">{{ number_format($commission->amount) }}원</h6>
+                            <h6 class="mb-0">{{ number_format($commission->commission_amount) }}원</h6>
                             <span class="badge bg-{{ $commission->status === 'paid' ? 'success' : 'warning' }}">
                                 {{ $commission->status === 'paid' ? '지급' : '대기' }}
                             </span>
@@ -143,7 +143,7 @@
                         </div>
                         <div>
                             <h6 class="mb-1">다음 지급 예정</h6>
-                            <p class="mb-0">{{ $nextPayment->payment_date ? $nextPayment->payment_date->format('Y년 m월 d일') : '미정' }}에 {{ number_format($nextPayment->amount) }}원이 지급 예정입니다.</p>
+                            <p class="mb-0">{{ $nextPayment->payment_date ? $nextPayment->payment_date->format('Y년 m월 d일') : '미정' }}에 {{ number_format($nextPayment->commission_amount) }}원이 지급 예정입니다.</p>
                         </div>
                     </div>
                 </div>

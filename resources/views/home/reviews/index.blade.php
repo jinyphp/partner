@@ -1,4 +1,4 @@
-@extends('jiny-site::layouts.home')
+@extends('jiny-partner::layouts.home')
 
 @section('title', $pageTitle ?? '리뷰 현황')
 
@@ -147,7 +147,7 @@
                         <div class="d-flex border-bottom pb-3 mb-3">
                             <div class="avatar avatar-md">
                                 <div class="avatar-img rounded-circle bg-primary text-white d-flex align-items-center justify-content-center">
-                                    {{ substr($review->reviewer_name, 0, 1) }}
+                                    {{ mb_substr($review->reviewer_name, 0, 1, 'UTF-8') }}
                                 </div>
                             </div>
                             <div class="ms-3 flex-grow-1">

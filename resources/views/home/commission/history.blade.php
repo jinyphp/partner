@@ -1,4 +1,4 @@
-@extends('jiny-site::layouts.home')
+@extends('jiny-partner::layouts.home')
 
 @section('title', '커미션 이력')
 
@@ -138,7 +138,7 @@
                                     <td>{{ $commission->source_name ?? '직접판매' }}</td>
                                     <td>{{ $commission->product_name ?? '상품명' }}</td>
                                     <td>{{ number_format($commission->sale_amount) }}원</td>
-                                    <td class="fw-bold">{{ number_format($commission->amount) }}원</td>
+                                    <td class="fw-bold">{{ number_format($commission->commission_amount) }}원</td>
                                     <td>
                                         <span class="badge bg-{{
                                             $commission->status === 'paid' ? 'success' :
@@ -237,7 +237,7 @@ function showCommissionDetail(commissionId) {
                             <table class="table table-sm">
                                 <tr><td>판매 금액:</td><td>${data.commission.sale_amount}원</td></tr>
                                 <tr><td>커미션 비율:</td><td>${data.commission.commission_rate}%</td></tr>
-                                <tr><td>커미션 금액:</td><td>${data.commission.amount}원</td></tr>
+                                <tr><td>커미션 금액:</td><td>${data.commission.commission_amount}원</td></tr>
                                 <tr><td>지급일:</td><td>${data.commission.paid_at || '미지급'}</td></tr>
                             </table>
                         </div>

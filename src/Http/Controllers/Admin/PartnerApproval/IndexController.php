@@ -23,7 +23,7 @@ class IndexController extends Controller
         $perPage = $request->get('per_page', 15);
 
         // 기본 쿼리
-        $query = PartnerApplication::with(['user', 'approver', 'rejector']);
+        $query = PartnerApplication::with(['user', 'approver', 'rejector', 'referrerPartner']);
 
         // 상태 필터
         if ($status !== 'all') {
@@ -62,7 +62,7 @@ class IndexController extends Controller
         }
 
         // 정렬
-        $allowedSorts = ['created_at', 'updated_at', 'application_status', 'expected_hourly_rate'];
+        $allowedSorts = ['created_at', 'updated_at', 'application_status'];
         if (in_array($sortBy, $allowedSorts)) {
             $query->orderBy($sortBy, $sortDirection);
         } else {
@@ -213,8 +213,7 @@ class IndexController extends Controller
             'sort_options' => [
                 'created_at' => '신청일시',
                 'updated_at' => '최종 수정일',
-                'application_status' => '상태',
-                'expected_hourly_rate' => '희망 시급'
+                'application_status' => '상태'
             ],
             'per_page_options' => [10, 15, 25, 50],
             'tiers' => PartnerTier::active()->orderBy('priority_level')->get()

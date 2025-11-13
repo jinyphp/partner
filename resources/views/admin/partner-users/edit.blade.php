@@ -33,88 +33,8 @@
                 @csrf
                 @method('PUT')
 
-                <!-- 회원정보 카드 -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">
-                            <i class="fe fe-user me-2"></i>회원정보
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <!-- 사용자 정보 안내 -->
-                        <div class="alert alert-info">
-                            <i class="fe fe-info me-2"></i>
-                            <strong>사용자 정보:</strong> 사용자 ID와 테이블 정보는 변경할 수 없습니다.
-                        </div>
-
-                        <!-- 기본 정보 -->
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="email" class="form-label">이메일 <span class="text-danger">*</span></label>
-                                <input type="email"
-                                       class="form-control @error('email') is-invalid @enderror"
-                                       name="email"
-                                       id="email"
-                                       value="{{ old('email', $item->email) }}"
-                                       required>
-                                @error('email')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label for="name" class="form-label">이름 <span class="text-danger">*</span></label>
-                                <input type="text"
-                                       class="form-control @error('name') is-invalid @enderror"
-                                       name="name"
-                                       id="name"
-                                       value="{{ old('name', $item->name) }}"
-                                       required>
-                                @error('name')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <!-- 사용자 시스템 정보 (읽기 전용) -->
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="user_id" class="form-label">사용자 ID</label>
-                                <input type="number"
-                                       class="form-control"
-                                       value="{{ $item->user_id }}"
-                                       readonly>
-                                <input type="hidden" name="user_id" value="{{ $item->user_id }}">
-                            </div>
-                            <div class="col-md-6">
-                                <label for="user_table" class="form-label">사용자 테이블</label>
-                                <input type="text"
-                                       class="form-control"
-                                       value="{{ $item->user_table }}"
-                                       readonly>
-                                <input type="hidden" name="user_table" value="{{ $item->user_table }}">
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <label for="user_uuid" class="form-label">사용자 UUID</label>
-                                <input type="text"
-                                       class="form-control"
-                                       value="{{ $item->user_uuid ?? 'N/A' }}"
-                                       readonly>
-                                <input type="hidden" name="user_uuid" value="{{ $item->user_uuid }}">
-                            </div>
-                            <div class="col-md-6">
-                                <label for="shard_number" class="form-label">샤드 번호</label>
-                                <input type="number"
-                                       class="form-control"
-                                       value="{{ $item->shard_number ?? 0 }}"
-                                       readonly>
-                                <input type="hidden" name="shard_number" value="{{ $item->shard_number }}">
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {{-- 샤딩 회원 검색 (수정 모드) --}}
+                @includeIf("jiny-partner::admin.partner-users.partials.search_user")
 
                 <!-- 파트너 정보 카드 -->
                 <div class="card mb-4">
@@ -150,12 +70,9 @@
                                         id="status"
                                         class="form-control @error('status') is-invalid @enderror"
                                         required>
-                                    @foreach($statusOptions as $value => $label)
-                                        <option value="{{ $value }}"
-                                                {{ old('status', $item->status) == $value ? 'selected' : '' }}>
-                                            {{ $label }}
-                                        </option>
-                                    @endforeach
+                                    <option value="pending" {{ old('status', $item->status) == 'pending' ? 'selected' : '' }}>대기</option>
+                                    <option value="active" {{ old('status', $item->status) == 'active' ? 'selected' : '' }}>승인</option>
+                                    <option value="suspended" {{ old('status', $item->status) == 'suspended' ? 'selected' : '' }}>정지</option>
                                 </select>
                                 @error('status')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -417,80 +334,74 @@
 
 @push('scripts')
 <script>
-// 상태 변경시 사유 입력 필드 표시/숨김
-document.getElementById('status').addEventListener('change', function() {
-    const statusReasonGroup = document.getElementById('status_reason_group');
-    const selectedStatus = this.value;
-    const originalStatus = '{{ $item->status }}';
+// 수정 페이지 전용 JavaScript
 
-    // 상태가 변경되고, 정지나 비활성으로 변경되는 경우
-    if (selectedStatus !== originalStatus && (selectedStatus === 'suspended' || selectedStatus === 'inactive')) {
-        statusReasonGroup.style.display = 'block';
-        document.getElementById('status_reason').required = true;
-    } else {
-        statusReasonGroup.style.display = 'none';
-        document.getElementById('status_reason').required = false;
-    }
-});
-
-// 등급 변경시 등급 할당일 자동 업데이트
-document.getElementById('partner_tier_id').addEventListener('change', function() {
-    const originalTierId = '{{ $item->partner_tier_id }}';
-    const selectedTierId = this.value;
-
-    if (selectedTierId !== originalTierId) {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('tier_assigned_at').value = today;
-    }
-});
-
-// JSON 유효성 검사
-document.getElementById('profile_data').addEventListener('blur', function() {
-    const value = this.value.trim();
-
-    if (value && value !== '') {
-        try {
-            JSON.parse(value);
-            this.classList.remove('is-invalid');
-            this.classList.add('is-valid');
-        } catch (e) {
-            this.classList.remove('is-valid');
-            this.classList.add('is-invalid');
-
-            // 피드백 메시지 추가
-            let feedback = this.parentNode.querySelector('.invalid-feedback');
-            if (!feedback) {
-                feedback = document.createElement('div');
-                feedback.className = 'invalid-feedback';
-                this.parentNode.appendChild(feedback);
-            }
-            feedback.textContent = 'JSON 형식이 올바르지 않습니다.';
-        }
-    } else {
-        this.classList.remove('is-invalid', 'is-valid');
-    }
-});
-
-// 폼 제출 전 유효성 검사
-document.getElementById('partnerUserForm').addEventListener('submit', function(e) {
-    const profileData = document.getElementById('profile_data').value.trim();
-
-    if (profileData && profileData !== '') {
-        try {
-            JSON.parse(profileData);
-        } catch (error) {
-            e.preventDefault();
-            alert('프로필 데이터의 JSON 형식이 올바르지 않습니다.');
-            document.getElementById('profile_data').focus();
-            return false;
-        }
-    }
-});
-
-// 페이지 로드시 상태에 따른 사유 필드 표시
+// 등급 변경시 등급 할당일 자동 업데이트 (수정 모드 전용)
 document.addEventListener('DOMContentLoaded', function() {
+    const partnerTierSelect = document.getElementById('partner_tier_id');
+    const tierAssignedAtInput = document.getElementById('tier_assigned_at');
+
+    if (partnerTierSelect && tierAssignedAtInput) {
+        partnerTierSelect.addEventListener('change', function() {
+            const originalTierId = '{{ $item->partner_tier_id }}';
+            const selectedTierId = this.value;
+
+            if (selectedTierId !== originalTierId && selectedTierId) {
+                const today = new Date().toISOString().split('T')[0];
+                tierAssignedAtInput.value = today;
+
+                // 변경 알림
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-info alert-dismissible fade show mt-2';
+                alert.innerHTML = `
+                    <i class="fe fe-info-circle me-2"></i>
+                    등급이 변경되어 할당일이 오늘 날짜로 자동 설정되었습니다.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+
+                partnerTierSelect.parentNode.appendChild(alert);
+
+                // 3초 후 자동 제거
+                setTimeout(() => {
+                    if (alert.parentNode) {
+                        alert.remove();
+                    }
+                }, 3000);
+            }
+        });
+    }
+
+    // 상태 변경 확장 (수정 모드용)
     const statusSelect = document.getElementById('status');
-    statusSelect.dispatchEvent(new Event('change'));
+    const statusReasonGroup = document.getElementById('status_reason_group');
+
+    if (statusSelect && statusReasonGroup) {
+        statusSelect.addEventListener('change', function() {
+            const selectedStatus = this.value;
+            const originalStatus = '{{ $item->status }}';
+
+            // 상태가 변경되고, 정지나 비활성으로 변경되는 경우
+            if (selectedStatus !== originalStatus && (selectedStatus === 'suspended' || selectedStatus === 'inactive')) {
+                statusReasonGroup.style.display = 'block';
+                document.getElementById('status_reason').required = true;
+
+                // 상태 변경 안내
+                const statusReasonTextarea = document.getElementById('status_reason');
+                if (statusReasonTextarea && !statusReasonTextarea.value.trim()) {
+                    statusReasonTextarea.placeholder = `${originalStatus}에서 ${selectedStatus}로 상태 변경 사유를 입력하세요...`;
+                }
+            } else {
+                statusReasonGroup.style.display = 'none';
+                const statusReasonInput = document.getElementById('status_reason');
+                if (statusReasonInput) {
+                    statusReasonInput.required = false;
+                }
+            }
+        });
+
+        // 페이지 로드시 상태에 따른 사유 필드 표시
+        statusSelect.dispatchEvent(new Event('change'));
+    }
 });
 </script>
 @endpush

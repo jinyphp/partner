@@ -1,4 +1,4 @@
-@extends('jiny-site::layouts.home')
+@extends('jiny-partner::layouts.home')
 
 @section('title', '판매 이력')
 
@@ -6,15 +6,25 @@
 <div class="container-fluid p-6">
     <div class="row">
         <div class="col-lg-12">
-            <div class="border-bottom pb-3 mb-3">
-                <h1 class="mb-1 h2 fw-bold">판매 이력</h1>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="{{ route('home.partner.index') }}">파트너 홈</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('home.partner.sales.index') }}">판매 관리</a></li>
-                        <li class="breadcrumb-item active">판매 이력</li>
-                    </ol>
-                </nav>
+            <div class="border-bottom pb-3 mb-3 d-flex align-items-center justify-content-between">
+                <div>
+                    <h1 class="mb-1 h2 fw-bold">판매 이력</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ route('home.partner.index') }}">파트너 홈</a></li>
+                            <li class="breadcrumb-item"><a href="{{ route('home.partner.sales.index') }}">판매 관리</a></li>
+                            <li class="breadcrumb-item active">판매 이력</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('home.partner.sales.create') }}" class="btn btn-primary">
+                        <i class="fe fe-plus me-2"></i>매출 등록
+                    </a>
+                    <a href="{{ route('home.partner.sales.index') }}" class="btn btn-outline-secondary">
+                        <i class="fe fe-arrow-left me-2"></i>대시보드
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -100,29 +110,51 @@
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>날짜</th>
+                                    <th>판매일자</th>
+                                    <th>등록시간</th>
                                     <th>상품명</th>
                                     <th>금액</th>
+                                    <th>카테고리</th>
                                     <th>상태</th>
-                                    <th>고객</th>
+                                    <th>작업</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($salesHistory as $sale)
                                 <tr>
-                                    <td>{{ $sale->created_at->format('Y-m-d H:i') }}</td>
-                                    <td>{{ $sale->product_name ?? '상품명' }}</td>
+                                    <td>{{ $sale->sales_date ? \Carbon\Carbon::parse($sale->sales_date)->format('Y-m-d H:i') : $sale->created_at->format('Y-m-d H:i') }}</td>
+                                    <td>{{ $sale->created_at->format('Y-m-d H:i:s') }}</td>
+                                    <td>{{ $sale->product_name ?? $sale->title ?? '상품명' }}</td>
                                     <td>{{ number_format($sale->amount) }}원</td>
                                     <td>
-                                        <span class="badge bg-{{ $sale->status === 'confirmed' ? 'success' : ($sale->status === 'pending' ? 'warning' : 'danger') }}">
-                                            {{ $sale->status === 'confirmed' ? '확정' : ($sale->status === 'pending' ? '대기' : '취소') }}
+                                        <span class="badge bg-light text-dark">
+                                            {{ $sale->category ?? '일반' }}
                                         </span>
                                     </td>
-                                    <td>{{ $sale->customer_name ?? '고객명' }}</td>
+                                    <td>
+                                        @if($sale->status === 'confirmed')
+                                        <span class="badge bg-success">확정</span>
+                                        @elseif($sale->status === 'pending')
+                                        <span class="badge bg-warning">대기</span>
+                                        @elseif($sale->status === 'cancel_pending')
+                                        <span class="badge bg-info">취소 승인 대기</span>
+                                        @elseif($sale->status === 'cancelled')
+                                        <span class="badge bg-danger">취소됨</span>
+                                        @elseif($sale->status === 'rejected')
+                                        <span class="badge bg-secondary">반려됨</span>
+                                        @else
+                                        <span class="badge bg-secondary">{{ $sale->status }}</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <a href="{{ route('home.partner.sales.show', $sale->id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fe fe-eye me-1"></i>상세보기
+                                        </a>
+                                    </td>
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="5" class="text-center py-4">
+                                    <td colspan="7" class="text-center py-4">
                                         <p class="text-muted">판매 내역이 없습니다.</p>
                                     </td>
                                 </tr>

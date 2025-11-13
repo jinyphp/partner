@@ -13,6 +13,9 @@
                     <p class="text-muted mb-0">파트너 지원서를 관리합니다</p>
                 </div>
                 <div>
+                    <a href="{{ route('admin.partner.applications.create') }}" class="btn btn-success me-2">
+                        <i class="fe fe-plus me-2"></i>신청서 등록
+                    </a>
                     <a href="{{ route('admin.partner.approval.index') }}" class="btn btn-primary">
                         <i class="fe fe-settings me-2"></i>승인 관리
                     </a>
@@ -160,7 +163,7 @@
                             <tr>
                                 <th width="200">지원자 정보</th>
                                 <th width="100">상태</th>
-                                <th width="100">희망 시급</th>
+                                <th width="150">추천인 정보</th>
                                 <th width="100">지원일</th>
                                 <th width="100">최종 수정일</th>
                                 <th width="100">관리</th>
@@ -172,7 +175,7 @@
                                 <td>
                                     <div>
                                         <strong>{{ $item->personal_info['name'] ?? $item->user->name ?? 'Unknown' }}</strong>
-                                        <br><small class="text-muted">{{ $item->user->email ?? 'Unknown' }}</small>
+                                        <br><small class="text-muted">{{ $item->personal_info['email'] ?? $item->user->email ?? 'Unknown' }}</small>
                                     </div>
                                 </td>
                                 <td>
@@ -193,7 +196,14 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <strong>{{ number_format($item->expected_hourly_rate ?? 0) }}원</strong>
+                                    @if($item->referrerPartner)
+                                        <div class="small">
+                                            <strong class="text-primary">{{ $item->referrerPartner->partner_code ?? 'N/A' }}</strong>
+                                            <br><small class="text-muted">{{ $item->referrerPartner->name ?? '알 수 없음' }}</small>
+                                        </div>
+                                    @else
+                                        <small class="text-muted">직접 신청</small>
+                                    @endif
                                 </td>
                                 <td>
                                     {{ $item->created_at->format('Y-m-d') }}
@@ -203,11 +213,22 @@
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <a href="{{ route('admin.partner.approval.show', $item->id) }}"
+                                        <a href="{{ route('admin.partner.applications.show', $item->id) }}"
                                            class="btn btn-outline-primary"
                                            title="상세보기">
                                             <i class="fe fe-eye"></i>
                                         </a>
+                                        <a href="{{ route('admin.partner.applications.edit', $item->id) }}"
+                                           class="btn btn-outline-secondary"
+                                           title="수정">
+                                            <i class="fe fe-edit-2"></i>
+                                        </a>
+                                        <button type="button"
+                                                class="btn btn-outline-danger"
+                                                title="삭제"
+                                                onclick="confirmDelete({{ $item->id }}, '{{ $item->personal_info['name'] ?? $item->user->name ?? 'Unknown' }}')">
+                                            <i class="fe fe-trash-2"></i>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -237,6 +258,30 @@
             @endif
         </div>
     </div>
+
+    <!-- 삭제 확인 모달 -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">신청서 삭제 확인</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong id="deleteName"></strong>님의 파트너 신청서를 정말 삭제하시겠습니까?</p>
+                    <p class="text-danger small">이 작업은 되돌릴 수 없습니다.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <form id="deleteForm" method="POST" style="display: inline;">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-danger">삭제</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 @endsection
 
@@ -263,4 +308,16 @@
     box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
 }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+function confirmDelete(id, name) {
+    document.getElementById('deleteName').textContent = name;
+    document.getElementById('deleteForm').action = `{{ route('admin.partner.applications.index') }}/${id}`;
+
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+</script>
 @endpush

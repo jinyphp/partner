@@ -2,13 +2,11 @@
 
 namespace Jiny\Partner\Http\Controllers\Home\Commission;
 
-use Jiny\Partner\Http\Controllers\Home\HomeController;
+use Jiny\Partner\Http\Controllers\PartnerController;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Jiny\Partner\Models\PartnerCommission;
-use Jiny\Partner\Models\PartnerUser;
 
-class IndexController extends HomeController
+class IndexController extends PartnerController
 {
     /**
      * 커미션 대시보드
@@ -16,20 +14,14 @@ class IndexController extends HomeController
     public function __invoke(Request $request)
     {
         try {
-            // JWT 인증 확인
-            $user = $this->auth($request);
-            if (!$user) {
-                return $this->errorResponse('인증이 필요합니다.');
+            // 파트너 인증 및 정보 조회 (공통 로직 사용)
+            $authResult = $this->authenticateAndGetPartner($request, 'commission');
+            if (!$authResult['success']) {
+                return $authResult['redirect'];
             }
 
-            // 파트너 사용자 정보 조회
-            $partnerUser = PartnerUser::where('user_id', $user->id ?? $user['id'])
-                ->where('status', 'active')
-                ->first();
-
-            if (!$partnerUser) {
-                return $this->errorResponse('파트너 권한이 없습니다.');
-            }
+            $user = $authResult['user'];
+            $partnerUser = $authResult['partner'];
 
             // 최근 커미션 데이터 조회
             $recentCommissions = PartnerCommission::where('partner_id', $partnerUser->id)
@@ -41,19 +33,21 @@ class IndexController extends HomeController
             $commissionStats = [
                 'total_commission' => PartnerCommission::where('partner_id', $partnerUser->id)
                     ->where('status', 'paid')
-                    ->sum('amount'),
+                    ->sum('commission_amount'),
                 'pending_commission' => PartnerCommission::where('partner_id', $partnerUser->id)
                     ->where('status', 'pending')
-                    ->sum('amount'),
+                    ->sum('commission_amount'),
                 'monthly_commission' => PartnerCommission::where('partner_id', $partnerUser->id)
                     ->where('status', 'paid')
-                    ->whereMonth('created_at', now()->month)
-                    ->whereYear('created_at', now()->year)
-                    ->sum('amount'),
+                    ->whereBetween('created_at', [
+                        now()->startOfMonth(),
+                        now()->endOfMonth()
+                    ])
+                    ->sum('commission_amount'),
                 'total_transactions' => PartnerCommission::where('partner_id', $partnerUser->id)->count(),
                 'avg_commission' => PartnerCommission::where('partner_id', $partnerUser->id)
                     ->where('status', 'paid')
-                    ->avg('amount') ?? 0,
+                    ->avg('commission_amount') ?? 0,
                 'commission_rate' => $partnerUser->tier->commission_rate ?? 0
             ];
 
@@ -73,26 +67,33 @@ class IndexController extends HomeController
                 ->orderBy('payment_date', 'asc')
                 ->first();
 
-            $viewData = [
-                'user' => $user,
-                'partnerUser' => $partnerUser,
+            // 표준 뷰 데이터 구성 (공통 로직 사용)
+            $viewData = $this->getStandardViewData($user, $partnerUser, [
                 'recentCommissions' => $recentCommissions,
                 'commissionStats' => $commissionStats,
                 'monthlyTrend' => $monthlyTrend,
                 'typeStats' => $typeStats,
                 'dailyCommissions' => $dailyCommissions,
-                'nextPayment' => $nextPayment,
-                'pageTitle' => '커미션 현황'
-            ];
+                'nextPayment' => $nextPayment
+            ], '커미션 현황');
 
-            if ($request->wantsJson()) {
-                return $this->successResponse($viewData);
+            // JSON 응답 처리 (공통 로직 사용)
+            $jsonResponse = $this->handleJsonResponse($request, $viewData);
+            if ($jsonResponse) {
+                return $jsonResponse;
             }
 
             return view('jiny-partner::home.commission.index', $viewData);
 
         } catch (\Exception $e) {
-            return $this->errorResponse('커미션 정보를 불러오는 중 오류가 발생했습니다.', ['error' => $e->getMessage()]);
+            // 공통 에러 처리 로직 사용
+            return $this->handlePartnerError(
+                $e,
+                $user ?? null,
+                'commission',
+                'home.partner.index',
+                '커미션 정보를 불러오는 중 오류가 발생했습니다.'
+            );
         }
     }
 
@@ -105,14 +106,16 @@ class IndexController extends HomeController
         $commissionData = [];
 
         for ($i = 5; $i >= 0; $i--) {
-            $date = now()->subMonths($i);
+            $date = now()->copy()->subMonths($i);
             $months[] = $date->format('Y-m');
 
             $monthlyCommission = PartnerCommission::where('partner_id', $partnerId)
                 ->where('status', 'paid')
-                ->whereMonth('created_at', $date->month)
-                ->whereYear('created_at', $date->year)
-                ->sum('amount');
+                ->whereBetween('created_at', [
+                    $date->copy()->startOfMonth(),
+                    $date->copy()->endOfMonth()
+                ])
+                ->sum('commission_amount');
 
             $commissionData[] = $monthlyCommission;
         }
@@ -130,7 +133,7 @@ class IndexController extends HomeController
     {
         return PartnerCommission::where('partner_id', $partnerId)
             ->where('status', 'paid')
-            ->selectRaw('commission_type, COUNT(*) as count, SUM(amount) as total_amount')
+            ->selectRaw('commission_type, COUNT(*) as count, SUM(commission_amount) as total_amount')
             ->groupBy('commission_type')
             ->orderBy('total_amount', 'desc')
             ->get();
@@ -151,7 +154,7 @@ class IndexController extends HomeController
             $dailyAmount = PartnerCommission::where('partner_id', $partnerId)
                 ->where('status', 'paid')
                 ->whereDate('created_at', $date)
-                ->sum('amount');
+                ->sum('commission_amount');
 
             $amounts[] = $dailyAmount;
         }

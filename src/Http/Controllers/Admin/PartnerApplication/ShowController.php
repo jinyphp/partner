@@ -12,7 +12,7 @@ class ShowController extends Controller
      */
     public function __invoke($id)
     {
-        $item = PartnerApplication::with(['user', 'approver', 'rejector'])->findOrFail($id);
+        $item = PartnerApplication::with(['user', 'approver', 'rejector', 'referrerPartner'])->findOrFail($id);
 
         // 완성도 점수 계산
         $completenessScore = $item->getCompletenessScore();

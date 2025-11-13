@@ -2,13 +2,13 @@
 
 namespace Jiny\Partner\Http\Controllers\Home\PartnerApproval;
 
-use Jiny\Partner\Http\Controllers\Home\HomeController;
+use Jiny\Partner\Http\Controllers\PartnerController;
 use Jiny\Partner\Models\PartnerApplication;
 use Jiny\Partner\Models\PartnerUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class PermissionsController extends HomeController
+class PermissionsController extends PartnerController
 {
     /**
      * 권한 확인 및 관리 페이지
@@ -16,23 +16,27 @@ class PermissionsController extends HomeController
      */
     public function __invoke(Request $request)
     {
-        // JWT 인증 확인
+        // 세션 인증 확인
         $user = $this->auth($request);
         if (!$user) {
-            if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'JWT 인증이 필요합니다.'], 401);
-            }
-            return redirect()->route('login')->with('error', 'JWT 인증이 필요합니다.');
+            return redirect()->route('login')->with('error', '로그인이 필요합니다.');
         }
 
-        // 파트너 정보 확인
-        $partner = PartnerUser::where('user_uuid', $user->uuid)->first();
+        // 파트너 정보 확인 (tier 관계 포함 로드)
+        $partner = PartnerUser::with('tier')->where('user_uuid', $user->uuid)->first();
         if (!$partner) {
-            if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => '파트너 등록이 필요합니다.'], 403);
+            // 파트너 신청 정보 확인
+            $partnerApplication = \Jiny\Partner\Models\PartnerApplication::where('user_uuid', $user->uuid)
+                ->latest()
+                ->first();
+
+            if ($partnerApplication) {
+                return redirect()->route('home.partner.regist.status', $partnerApplication->id)
+                    ->with('info', '파트너 신청이 아직 처리 중입니다.');
+            } else {
+                return redirect()->route('home.partner.intro')
+                    ->with('info', '파트너 프로그램에 먼저 가입해 주세요.');
             }
-            return redirect()->route('home.partner.regist.index')
-                ->with('error', '파트너 등록이 필요합니다.');
         }
 
         // 권한 데이터 수집

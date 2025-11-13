@@ -8,8 +8,9 @@ use Jiny\Partner\Models\PartnerTier;
 use Jiny\Partner\Models\PartnerUser;
 use Illuminate\Http\Request;
 
-use Jiny\Auth\Http\Controllers\HomeController;
-class StatusController extends HomeController
+use Jiny\Partner\Http\Controllers\PartnerController;
+//use Jiny\Auth\Http\Controllers\HomeController;
+class StatusController extends PartnerController
 {
 
     /**
@@ -55,11 +56,31 @@ class StatusController extends HomeController
         // 진행 로그 생성
         $progressLogs = $this->generateProgressLogs($currentApplication);
 
+        // 추천 파트너 정보 가져오기
+        $referrerInfo = null;
+        if ($currentApplication->referrer_partner_id) {
+            $referrerPartner = PartnerUser::with('partnerTier')->find($currentApplication->referrer_partner_id);
+            if ($referrerPartner) {
+                $referrerInfo = [
+                    'id' => $referrerPartner->id,
+                    'name' => $referrerPartner->name,
+                    'email' => $referrerPartner->email,
+                    'tier' => $referrerPartner->partnerTier->tier_name ?? 'Unknown',
+                    'tier_color' => $referrerPartner->partnerTier->tier_color ?? '#6c757d',
+                    'partner_code' => $referrerPartner->partner_code,
+                    'referral_code_used' => $currentApplication->referral_code,
+                    'referral_source' => $currentApplication->referral_source
+                ];
+            }
+        }
+
         return view('jiny-partner::home.partner-regist.status', [
             'user' => $user,
             'currentApplication' => $currentApplication,
             'statusInfo' => $statusInfo,
             'progressLogs' => $progressLogs,
+            'referrerInfo' => $referrerInfo,
+            'hasReferrer' => $referrerInfo !== null,
             'pageTitle' => '파트너 신청 상태'
         ]);
     }
@@ -123,7 +144,7 @@ class StatusController extends HomeController
                             'label' => '새로 작성하기',
                             'url' => '/home/partner/regist/create',
                             'class' => 'btn-outline-secondary'
-                        ]
+                        ],
                     ],
                     'color' => 'warning'
                 ];
@@ -137,7 +158,7 @@ class StatusController extends HomeController
                     'actions' => [
                         [
                             'label' => '신청서 확인',
-                            'url' => "/home/partner/regist/{$application->id}/status",
+                            'url' => "/home/partner/regist/{$application->id}/edit",
                             'class' => 'btn-outline-primary'
                         ]
                     ],

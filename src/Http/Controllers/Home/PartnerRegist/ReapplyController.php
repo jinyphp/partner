@@ -9,8 +9,9 @@ use Illuminate\Http\Request;
 //use Illuminate\Support\Facades\Auth;
 //use Jiny\Auth\Http\Controllers\Traits\JWTAuthTrait;
 
-use Jiny\Auth\Http\Controllers\HomeController;
-class ReapplyController extends HomeController
+use Jiny\Partner\Http\Controllers\PartnerController;
+//use Jiny\Auth\Http\Controllers\HomeController;
+class ReapplyController extends PartnerController
 {
 
     /**

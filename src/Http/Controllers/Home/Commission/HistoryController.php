@@ -2,13 +2,13 @@
 
 namespace Jiny\Partner\Http\Controllers\Home\Commission;
 
-use Jiny\Partner\Http\Controllers\Home\HomeController;
+use Jiny\Partner\Http\Controllers\PartnerController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Jiny\Partner\Models\PartnerCommission;
 use Jiny\Partner\Models\PartnerUser;
 
-class HistoryController extends HomeController
+class HistoryController extends PartnerController
 {
     /**
      * 커미션 이력 조회
@@ -16,19 +16,28 @@ class HistoryController extends HomeController
     public function __invoke(Request $request)
     {
         try {
-            // JWT 인증 확인
+            // 세션 인증 확인
             $user = $this->auth($request);
             if (!$user) {
-                return $this->errorResponse('인증이 필요합니다.');
+                return redirect()->route('login')->with('error', '로그인이 필요합니다.');
             }
 
-            // 파트너 사용자 정보 조회
-            $partnerUser = PartnerUser::where('user_id', $user->id ?? $user['id'])
-                ->where('status', 'active')
-                ->first();
+            // 파트너 사용자 정보 조회 (UUID 기반)
+            $partnerUser = PartnerUser::where('user_uuid', $user->uuid)->first();
 
             if (!$partnerUser) {
-                return $this->errorResponse('파트너 권한이 없습니다.');
+                // 파트너 신청 정보 확인
+                $partnerApplication = \Jiny\Partner\Models\PartnerApplication::where('user_uuid', $user->uuid)
+                    ->latest()
+                    ->first();
+
+                if ($partnerApplication) {
+                    return redirect()->route('home.partner.regist.status', $partnerApplication->id)
+                        ->with('info', '파트너 신청이 아직 처리 중입니다.');
+                } else {
+                    return redirect()->route('home.partner.intro')
+                        ->with('info', '파트너 프로그램에 먼저 가입해 주세요.');
+                }
             }
 
             // 필터링 옵션
@@ -43,16 +52,23 @@ class HistoryController extends HomeController
             // 기간 필터
             switch ($period) {
                 case 'this_month':
-                    $query->whereMonth('created_at', now()->month)
-                          ->whereYear('created_at', now()->year);
+                    $query->whereBetween('created_at', [
+                        now()->startOfMonth(),
+                        now()->endOfMonth()
+                    ]);
                     break;
                 case 'last_month':
-                    $lastMonth = now()->subMonth();
-                    $query->whereMonth('created_at', $lastMonth->month)
-                          ->whereYear('created_at', $lastMonth->year);
+                    $lastMonth = now()->copy()->subMonth();
+                    $query->whereBetween('created_at', [
+                        $lastMonth->copy()->startOfMonth(),
+                        $lastMonth->copy()->endOfMonth()
+                    ]);
                     break;
                 case 'this_year':
-                    $query->whereYear('created_at', now()->year);
+                    $query->whereBetween('created_at', [
+                        now()->startOfYear(),
+                        now()->endOfYear()
+                    ]);
                     break;
             }
 
@@ -73,11 +89,11 @@ class HistoryController extends HomeController
             // 필터링된 통계
             $filteredStats = [
                 'total_count' => $query->count(),
-                'total_amount' => $query->sum('amount'),
-                'avg_amount' => $query->avg('amount') ?? 0,
-                'paid_amount' => $query->where('status', 'paid')->sum('amount'),
-                'pending_amount' => $query->where('status', 'pending')->sum('amount'),
-                'cancelled_amount' => $query->where('status', 'cancelled')->sum('amount')
+                'total_amount' => $query->sum('commission_amount'),
+                'avg_amount' => $query->avg('commission_amount') ?? 0,
+                'paid_amount' => $query->where('status', 'paid')->sum('commission_amount'),
+                'pending_amount' => $query->where('status', 'pending')->sum('commission_amount'),
+                'cancelled_amount' => $query->where('status', 'cancelled')->sum('commission_amount')
             ];
 
             // 상태별 통계
@@ -92,12 +108,16 @@ class HistoryController extends HomeController
 
             // 커미션 타입별 통계
             $typeStats = [
-                'direct_sale' => PartnerCommission::where('partner_id', $partnerUser->id)
-                    ->where('commission_type', 'direct_sale')->sum('amount'),
-                'referral_bonus' => PartnerCommission::where('partner_id', $partnerUser->id)
-                    ->where('commission_type', 'referral_bonus')->sum('amount'),
-                'tier_bonus' => PartnerCommission::where('partner_id', $partnerUser->id)
-                    ->where('commission_type', 'tier_bonus')->sum('amount')
+                'direct_sales' => PartnerCommission::where('partner_id', $partnerUser->id)
+                    ->where('commission_type', 'direct_sales')->sum('commission_amount'),
+                'team_bonus' => PartnerCommission::where('partner_id', $partnerUser->id)
+                    ->where('commission_type', 'team_bonus')->sum('commission_amount'),
+                'management_bonus' => PartnerCommission::where('partner_id', $partnerUser->id)
+                    ->where('commission_type', 'management_bonus')->sum('commission_amount'),
+                'override_bonus' => PartnerCommission::where('partner_id', $partnerUser->id)
+                    ->where('commission_type', 'override_bonus')->sum('commission_amount'),
+                'recruitment_bonus' => PartnerCommission::where('partner_id', $partnerUser->id)
+                    ->where('commission_type', 'recruitment_bonus')->sum('commission_amount')
             ];
 
             $viewData = [
@@ -120,7 +140,15 @@ class HistoryController extends HomeController
             return view('jiny-partner::home.commission.history', $viewData);
 
         } catch (\Exception $e) {
-            return $this->errorResponse('커미션 이력을 불러오는 중 오류가 발생했습니다.', ['error' => $e->getMessage()]);
+            \Log::error('Partner commission history error: ' . $e->getMessage(), [
+                'user_id' => $user->id ?? 'unknown',
+                'user_uuid' => $user->uuid ?? 'unknown',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->route('home.partner.commission.index')
+                ->with('error', '커미션 이력을 불러오는 중 오류가 발생했습니다.');
         }
     }
 }

@@ -1,4 +1,4 @@
-@extends('jiny-site::layouts.home')
+@extends('jiny-partner::layouts.home')
 
 @section('title', $pageTitle ?? '판매 대시보드')
 
@@ -16,6 +16,11 @@
                             <li class="breadcrumb-item active" aria-current="page">판매 대시보드</li>
                         </ol>
                     </nav>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('home.partner.sales.create') }}" class="btn btn-primary">
+                        <i class="fe fe-plus me-2"></i>매출 등록
+                    </a>
                 </div>
             </div>
         </div>
@@ -160,6 +165,7 @@
             </div>
         </div>
     </div>
+
 </div>
 @endsection
 

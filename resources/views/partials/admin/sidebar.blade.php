@@ -39,13 +39,6 @@
                 <div class="nav-divider"></div>
             </li>
 
-            {{-- <li class="nav-item">
-                <a class="nav-link" href="{{ route('admin.subscribe.plan.index') }}">
-                    <i class="nav-icon fe fe-grid me-2"></i>
-                    실적등록
-                </a>
-            </li> --}}
-
             {{-- ============================================
                 실적 관리
             ============================================ --}}
@@ -53,7 +46,6 @@
                 <div class="navbar-heading">실적 관리</div>
             </li>
 
-            {{-- 실적 등록--}}
             <li class="nav-item">
                 <a class="nav-link" href="{{ route('admin.partner.sales.index') }}">
                     <i class="nav-icon fe fe-folder me-2"></i>
@@ -61,73 +53,19 @@
                 </a>
             </li>
 
-            {{-- 구독 목록 관리 --}}
-            {{-- <li class="nav-item">
-                <a class="nav-link" href="{{ route('admin.site.subscribes.index') }}">
-                    <i class="nav-icon fe fe-briefcase me-2"></i>
-                    구독 목록
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('admin.partner.network.commission.index') }}">
+                    <i class="nav-icon fe fe-dollar-sign me-2"></i>
+                    커미션 관리
                 </a>
             </li>
 
             <li class="nav-item">
-                <div class="navbar-heading">구독 회원</div>
-            </li> --}}
-
-
-            {{-- 구독 사용자 관리 --}}
-            {{-- <li class="nav-item">
-                <a class="nav-link" href="{{ route('admin.subscribe.users.index') }}">
-                    <i class="nav-icon fe fe-users me-2"></i>
-                    구독 사용자
+                <a class="nav-link" href="{{ route('admin.partner.network.analytics.performance') }}">
+                    <i class="fe fe-activity me-2"></i>
+                    성과 분석
                 </a>
-            </li> --}}
-
-            {{-- 구독 로그 관리 --}}
-            {{-- <li class="nav-item">
-                <a class="nav-link" href="{{ route('admin.subscribe.subscription-logs.index') }}">
-                    <i class="nav-icon fe fe-activity me-2"></i>
-                    구독 로그
-                </a>
-            </li> --}}
-
-            {{-- 결제 내역 관리 --}}
-            {{-- <li class="nav-item">
-                <a class="nav-link" href="{{ route('admin.subscribe.payments.index') }}">
-                    <i class="nav-icon fe fe-credit-card me-2"></i>
-                    결제 내역
-                </a>
-            </li> --}}
-
-            {{-- 구독 프로세스 관리 --}}
-            {{-- <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-bs-toggle="collapse"
-                    data-bs-target="#navSubscriptionProcess" aria-expanded="false" aria-controls="navSubscriptionProcess">
-                    <i class="nav-icon fe fe-refresh-cw me-2"></i>
-                    구독 프로세스
-                </a>
-                <div id="navSubscriptionProcess" class="collapse" data-bs-parent="#sideNavbar">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('admin.subscribe.users.index') }}?status=active">
-                                <i class="fe fe-play-circle me-2"></i>
-                                활성 구독
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('admin.subscribe.users.index') }}?status=expiring_soon">
-                                <i class="fe fe-alert-triangle me-2"></i>
-                                만료 임박
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('admin.subscribe.users.index') }}?status=cancelled">
-                                <i class="fe fe-x-circle me-2"></i>
-                                취소된 구독
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </li> --}}
+            </li>
 
             {{-- ============================================
                 파트너 관리
@@ -136,7 +74,13 @@
                 <div class="navbar-heading">파트너 관리</div>
             </li>
 
-            {{-- 파트너 회원 관리 --}}
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('admin.partner.partner-dashboard') }}">
+                    <i class="nav-icon fe fe-pie-chart me-2"></i>
+                    파트너 현황
+                </a>
+            </li>
+
             <li class="nav-item">
                 <a class="nav-link" href="{{ route('admin.partner.users.index') }}">
                     <i class="nav-icon fe fe-users me-2"></i>
@@ -144,7 +88,6 @@
                 </a>
             </li>
 
-            {{-- 파트너 등급 관리 --}}
             <li class="nav-item">
                 <a class="nav-link" href="{{ route('admin.partner.tiers.index') }}">
                     <i class="nav-icon fe fe-award me-2"></i>
@@ -152,7 +95,6 @@
                 </a>
             </li>
 
-            {{-- 파트너 타입 관리 --}}
             <li class="nav-item">
                 <a class="nav-link" href="{{ route('admin.partner.type.index') }}">
                     <i class="nav-icon fe fe-tag me-2"></i>
@@ -160,15 +102,19 @@
                 </a>
             </li>
 
-            {{-- 파트너 엔지니어 관리 --}}
-            {{-- <li class="nav-item">
-                <a class="nav-link" href="{{ route('admin.partner.dashboard') }}">
-                    <i class="nav-icon fe fe-user-check me-2"></i>
-                    파트너 엔지니어
-                </a>
-            </li> --}}
 
-            {{-- 파트너 지원서 관리 --}}
+
+            <li class="nav-item">
+                <div class="navbar-heading">승인 관리</div>
+            </li>
+
+             <li class="nav-item">
+                <a class="nav-link" href="{{ route('admin.partner.codes.index') }}">
+                    <i class="nav-icon fe fe-hash me-2"></i>
+                    파트너 코드
+                </a>
+            </li>
+
             <li class="nav-item">
                 <a class="nav-link" href="{{ route('admin.partner.applications.index') }}">
                     <i class="nav-icon fe fe-file-text me-2"></i>
@@ -176,7 +122,6 @@
                 </a>
             </li>
 
-            {{-- 파트너 승인 관리 --}}
             <li class="nav-item">
                 <a class="nav-link" href="{{ route('admin.partner.approval.index') }}">
                     <i class="nav-icon fe fe-check-circle me-2"></i>
@@ -184,14 +129,27 @@
                 </a>
             </li>
 
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('admin.partner.interview.index') }}">
+                    <i class="nav-icon fe fe-calendar me-2"></i>
+                    파트너 면접
+                </a>
+            </li>
+
             {{-- ============================================
-                네트워크 관리 (MLM 구조)
+                네트워크 관리
             ============================================ --}}
             <li class="nav-item">
                 <div class="navbar-heading">네트워크 관리</div>
             </li>
 
-            {{-- 네트워크 트리 구조 --}}
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('admin.partner.network.analytics.dashboard') }}">
+                    <i class="fe fe-trending-up me-2"></i>
+                    분석 대시보드
+                </a>
+            </li>
+
             <li class="nav-item">
                 <a class="nav-link" href="{{ route('admin.partner.network.tree') }}">
                     <i class="nav-icon fe fe-git-branch me-2"></i>
@@ -199,171 +157,6 @@
                 </a>
             </li>
 
-            {{-- 파트너 모집 관리 --}}
-            <li class="nav-item">
-                <a class="nav-link" href="{{ route('admin.partner.network.recruitment.index') }}">
-                    <i class="nav-icon fe fe-user-plus me-2"></i>
-                    파트너 모집
-                </a>
-            </li>
-
-            {{-- 커미션 분배 관리 --}}
-            <li class="nav-item">
-                <a class="nav-link" href="{{ route('admin.partner.network.commission.index') }}">
-                    <i class="nav-icon fe fe-dollar-sign me-2"></i>
-                    커미션 관리
-                </a>
-            </li>
-
-            {{-- 네트워크 분석 및 통계 --}}
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-bs-toggle="collapse"
-                    data-bs-target="#navNetworkAnalytics" aria-expanded="false" aria-controls="navNetworkAnalytics">
-                    <i class="nav-icon fe fe-bar-chart-2 me-2"></i>
-                    네트워크 분석
-                </a>
-                <div id="navNetworkAnalytics" class="collapse" data-bs-parent="#sideNavbar">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('admin.partner.network.analytics.dashboard') }}">
-                                <i class="fe fe-trending-up me-2"></i>
-                                분석 대시보드
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('admin.partner.network.analytics.performance') }}">
-                                <i class="fe fe-activity me-2"></i>
-                                성과 분석
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('admin.partner.network.analytics.genealogy') }}">
-                                <i class="fe fe-share-2 me-2"></i>
-                                계보 분석
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </li>
-
-            {{-- 계층 관리 도구 --}}
-            <li class="nav-item">
-                <a class="nav-link" href="{{ route('admin.partner.network.hierarchy.management') }}">
-                    <i class="nav-icon fe fe-layers me-2"></i>
-                    계층 관리
-                </a>
-            </li>
-
-            {{-- ============================================
-                운영 관리
-            ============================================ --}}
-            {{-- <li class="nav-item">
-                <div class="navbar-heading">운영 관리</div>
-            </li> --}}
-
-            {{-- 예약 관리 --}}
-            {{-- <li class="nav-item">
-                <a class="nav-link" href="{{ route('admin.subscribe.operations.appointments.index') }}">
-                    <i class="nav-icon fe fe-calendar me-2"></i>
-                    예약 관리
-                </a>
-            </li> --}}
-
-            {{-- 고객 주소 관리 --}}
-            {{-- <li class="nav-item">
-                <a class="nav-link" href="{{ route('admin.subscribe.customers.addresses.index') }}">
-                    <i class="nav-icon fe fe-map-pin me-2"></i>
-                    고객 주소 관리
-                </a>
-            </li> --}}
-
-            {{-- ============================================
-                품질 관리
-            ============================================ --}}
-            {{-- <li class="nav-item">
-                <div class="navbar-heading">품질 관리</div>
-            </li> --}}
-
-            {{-- 구독 체크리스트 --}}
-            {{-- <li class="nav-item">
-                <a class="nav-link" href="{{ route('admin.subscribe.quality.checklists.index') }}">
-                    <i class="nav-icon fe fe-check-square me-2"></i>
-                    구독 체크리스트
-                </a>
-            </li> --}}
-
-            {{-- 구독 진행상황 --}}
-            {{-- <li class="nav-item">
-                <a class="nav-link" href="{{ route('admin.subscribe.quality.progress.index') }}">
-                    <i class="nav-icon fe fe-activity me-2"></i>
-                    구독 진행상황
-                </a>
-            </li> --}}
-
-            {{-- 구독 검수 --}}
-            {{-- <li class="nav-item">
-                <a class="nav-link" href="{{ route('admin.subscribe.quality.inspections.index') }}">
-                    <i class="nav-icon fe fe-eye me-2"></i>
-                    구독 검수
-                </a>
-            </li> --}}
-
-            {{-- ============================================
-                작업 관리
-            ============================================ --}}
-            {{-- <li class="nav-item">
-                <div class="navbar-heading">작업 관리</div>
-            </li> --}}
-
-            {{-- 작업 배정 --}}
-            {{-- <li class="nav-item">
-                <a class="nav-link" href="{{ route('admin.subscribe.work.assignments.index') }}">
-                    <i class="nav-icon fe fe-user-plus me-2"></i>
-                    작업 배정
-                </a>
-            </li> --}}
-
-            {{-- 구독 제공자 --}}
-            {{-- <li class="nav-item">
-                <a class="nav-link" href="{{ route('admin.subscribe.work.providers.index') }}">
-                    <i class="nav-icon fe fe-users me-2"></i>
-                    구독 제공자
-                </a>
-            </li> --}}
-
-            {{-- ============================================
-                운영 이력
-            ============================================ --}}
-            {{-- <li class="nav-item">
-                <div class="navbar-heading">운영 이력</div>
-            </li> --}}
-
-            {{-- 예약 변경 이력 --}}
-            {{-- <li class="nav-item">
-                <a class="nav-link" href="{{ route('admin.subscribe.history.appointment-changes.index') }}">
-                    <i class="nav-icon fe fe-clock me-2"></i>
-                    예약 변경 이력
-                </a>
-            </li> --}}
-
-
-
-
-
-
-
-
         </ul>
-
-        <!-- Help Card -->
-        {{-- <div class="card bg-dark-primary shadow-none text-center mx-4 mt-5">
-            <div class="card-body py-4">
-                <h5 class="text-white-50">도움이 필요하신가요?</h5>
-                <p class="text-white-50 fs-6 mb-3">CMS 관리 문서를 확인하세요</p>
-                <a href="{{ route('admin.cms.dashboard') }}" class="btn btn-white btn-sm">
-                    CMS 대시보드 바로가기
-                </a>
-            </div>
-        </div> --}}
     </div>
 </nav>

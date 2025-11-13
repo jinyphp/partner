@@ -2,12 +2,12 @@
 
 namespace Jiny\Partner\Http\Controllers\Home\Reviews;
 
-use Jiny\Partner\Http\Controllers\Home\HomeController;
+use Jiny\Partner\Http\Controllers\PartnerController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Jiny\Partner\Models\PartnerUser;
 
-class IndexController extends HomeController
+class IndexController extends PartnerController
 {
     /**
      * 리뷰 현황 대시보드
@@ -15,19 +15,28 @@ class IndexController extends HomeController
     public function __invoke(Request $request)
     {
         try {
-            // JWT 인증 확인
+            // 세션 인증 확인
             $user = $this->auth($request);
             if (!$user) {
-                return $this->errorResponse('인증이 필요합니다.');
+                return redirect()->route('login')->with('error', '로그인이 필요합니다.');
             }
 
-            // 파트너 사용자 정보 조회
-            $partnerUser = PartnerUser::where('user_id', $user->id ?? $user['id'])
-                ->where('status', 'active')
-                ->first();
+            // 파트너 사용자 정보 조회 (UUID 기반)
+            $partnerUser = PartnerUser::where('user_uuid', $user->uuid)->first();
 
             if (!$partnerUser) {
-                return $this->errorResponse('파트너 권한이 없습니다.');
+                // 파트너 신청 정보 확인
+                $partnerApplication = \Jiny\Partner\Models\PartnerApplication::where('user_uuid', $user->uuid)
+                    ->latest()
+                    ->first();
+
+                if ($partnerApplication) {
+                    return redirect()->route('home.partner.regist.status', $partnerApplication->id)
+                        ->with('info', '파트너 신청이 아직 처리 중입니다.');
+                } else {
+                    return redirect()->route('home.partner.intro')
+                        ->with('info', '파트너 프로그램에 먼저 가입해 주세요.');
+                }
             }
 
             // 리뷰 통계 (임시 데이터 - 실제로는 리뷰 모델에서 조회)
@@ -74,7 +83,15 @@ class IndexController extends HomeController
             return view('jiny-partner::home.reviews.index', $viewData);
 
         } catch (\Exception $e) {
-            return $this->errorResponse('리뷰 정보를 불러오는 중 오류가 발생했습니다.', ['error' => $e->getMessage()]);
+            \Log::error('Partner reviews error: ' . $e->getMessage(), [
+                'user_id' => $user->id ?? 'unknown',
+                'user_uuid' => $user->uuid ?? 'unknown',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->route('home.partner.index')
+                ->with('error', '리뷰 정보를 불러오는 중 오류가 발생했습니다.');
         }
     }
 }
