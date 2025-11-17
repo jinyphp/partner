@@ -44,8 +44,8 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <h4 class="mb-0">{{ number_format($statistics['paid_commission']) }}원</h4>
-                            <p class="mb-0 text-muted">지급 완료</p>
+                            <h4 class="mb-0">{{ number_format($statistics['calculated_commission'] ?? 0) }}원</h4>
+                            <p class="mb-0 text-muted">계산 완료</p>
                         </div>
                         <div class="icon-shape icon-md bg-success text-white rounded-3">
                             <i class="fe fe-check-circle"></i>
@@ -59,11 +59,11 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <h4 class="mb-0">{{ number_format($statistics['unpaid_commission']) }}원</h4>
-                            <p class="mb-0 text-muted">미지급</p>
+                            <h4 class="mb-0">{{ number_format($statistics['active_commission'] ?? 0) }}원</h4>
+                            <p class="mb-0 text-muted">활성 커미션</p>
                         </div>
-                        <div class="icon-shape icon-md bg-warning text-white rounded-3">
-                            <i class="fe fe-clock"></i>
+                        <div class="icon-shape icon-md bg-info text-white rounded-3">
+                            <i class="fe fe-activity"></i>
                         </div>
                     </div>
                 </div>
@@ -118,9 +118,6 @@
                         <button type="button" class="btn btn-outline-primary btn-sm" onclick="selectAll()">
                             전체 선택
                         </button>
-                        <button type="button" class="btn btn-outline-success btn-sm" onclick="bulkAction('pay')">
-                            선택 지급
-                        </button>
                         <button type="button" class="btn btn-outline-danger btn-sm" onclick="bulkAction('cancel')">
                             선택 취소
                         </button>
@@ -139,7 +136,7 @@
                                     <th>커미션 타입</th>
                                     <th>금액</th>
                                     <th>수수료율</th>
-                                    <th>실지급액</th>
+                                    <th>순금액</th>
                                     <th>상태</th>
                                     <th>발생일</th>
                                     <th>액션</th>
@@ -194,13 +191,11 @@
                                                 $statusColors = [
                                                     'pending' => 'warning',
                                                     'calculated' => 'info',
-                                                    'paid' => 'success',
                                                     'cancelled' => 'danger'
                                                 ];
                                                 $statusLabels = [
                                                     'pending' => '대기',
                                                     'calculated' => '계산완료',
-                                                    'paid' => '지급완료',
                                                     'cancelled' => '취소'
                                                 ];
                                             @endphp
@@ -208,19 +203,13 @@
                                                 {{ $statusLabels[$commission->status] ?? $commission->status }}
                                             </span>
                                         </td>
-                                        <td>{{ $commission->earned_at->format('Y-m-d H:i') }}</td>
+                                        <td>{{ $commission->earned_at->format('Y-m-d H:i:s') }}</td>
                                         <td>
                                             <div class="btn-group btn-group-sm" role="group">
                                                 <a href="{{ route('admin.partner.network.commission.show', $commission->id) }}"
                                                    class="btn btn-outline-primary btn-sm">
                                                     <i class="fe fe-eye"></i>
                                                 </a>
-                                                @if($commission->status === 'calculated')
-                                                    <button type="button" class="btn btn-outline-success btn-sm"
-                                                            onclick="payCommission({{ $commission->id }})">
-                                                        <i class="fe fe-dollar-sign"></i>
-                                                    </button>
-                                                @endif
                                                 @if(in_array($commission->status, ['pending', 'calculated']))
                                                     <button type="button" class="btn btn-outline-danger btn-sm"
                                                             onclick="cancelCommission({{ $commission->id }})">
@@ -309,7 +298,6 @@
                                     <option value="all" {{ $currentFilters['status'] === 'all' ? 'selected' : '' }}>전체</option>
                                     <option value="pending" {{ $currentFilters['status'] === 'pending' ? 'selected' : '' }}>대기</option>
                                     <option value="calculated" {{ $currentFilters['status'] === 'calculated' ? 'selected' : '' }}>계산완료</option>
-                                    <option value="paid" {{ $currentFilters['status'] === 'paid' ? 'selected' : '' }}>지급완료</option>
                                     <option value="cancelled" {{ $currentFilters['status'] === 'cancelled' ? 'selected' : '' }}>취소</option>
                                 </select>
                             </div>
@@ -437,7 +425,7 @@ function bulkAction(action) {
         return;
     }
 
-    if (!confirm(`선택된 ${selectedIds.length}개의 커미션을 ${action === 'pay' ? '지급' : '취소'}하시겠습니까?`)) {
+    if (!confirm(`선택된 ${selectedIds.length}개의 커미션을 취소하시겠습니까?`)) {
         return;
     }
 
@@ -463,29 +451,7 @@ function bulkAction(action) {
 }
 
 // Individual actions
-function payCommission(id) {
-    if (!confirm('이 커미션을 지급하시겠습니까?')) return;
-
-    $.ajax({
-        url: '{{ route("admin.partner.network.commission.bulk-process") }}',
-        method: 'POST',
-        data: {
-            commission_ids: [id],
-            action: 'pay',
-            _token: $('meta[name="csrf-token"]').attr('content')
-        },
-        success: function(response) {
-            alert(response.message);
-            if (response.success) {
-                location.reload();
-            }
-        },
-        error: function(xhr) {
-            const response = xhr.responseJSON;
-            alert('오류: ' + (response?.message || '알 수 없는 오류가 발생했습니다.'));
-        }
-    });
-}
+// payCommission 함수 제거됨 - 지급 기능은 별도의 지급 테이블로 관리
 
 function cancelCommission(id) {
     const reason = prompt('취소 사유를 입력하세요:');

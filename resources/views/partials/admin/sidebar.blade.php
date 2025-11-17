@@ -1,18 +1,18 @@
 <!-- Sidebar -->
 <style>
-.navbar-heading {
-    color: #8a94a6 !important;
-    font-weight: 600 !important;
-    font-size: 0.75rem !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.5px !important;
-    margin-bottom: 0.5rem !important;
-    padding: 0.75rem 1.5rem 0.25rem 1.5rem !important;
-}
+    .navbar-heading {
+        color: #8a94a6 !important;
+        font-weight: 600 !important;
+        font-size: 0.75rem !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        margin-bottom: 0.5rem !important;
+        padding: 0.75rem 1.5rem 0.25rem 1.5rem !important;
+    }
 
-.navbar-vertical .navbar-nav .navbar-heading:not(:first-child) {
-    margin-top: 2rem !important;
-}
+    .navbar-vertical .navbar-nav .navbar-heading:not(:first-child) {
+        margin-top: 2rem !important;
+    }
 </style>
 
 <nav class="navbar-vertical navbar">
@@ -67,6 +67,20 @@
                 </a>
             </li>
 
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('admin.partner.performance.metrics.index') }}">
+                    <i class="nav-icon fe fe-bar-chart-2 me-2"></i>
+                    성과 지표
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('admin.partner.payments.index') }}">
+                    <i class="nav-icon fe fe-credit-card me-2"></i>
+                    지급 관리
+                </a>
+            </li>
+
             {{-- ============================================
                 파트너 관리
             ============================================ --}}
@@ -104,11 +118,13 @@
 
 
 
+
+
             <li class="nav-item">
                 <div class="navbar-heading">승인 관리</div>
             </li>
 
-             <li class="nav-item">
+            <li class="nav-item">
                 <a class="nav-link" href="{{ route('admin.partner.codes.index') }}">
                     <i class="nav-icon fe fe-hash me-2"></i>
                     파트너 코드
@@ -136,6 +152,13 @@
                 </a>
             </li>
 
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('admin.partner.interview.evaluations.index') }}">
+                    <i class="nav-icon fe fe-edit-3 me-2"></i>
+                    면접 평가
+                </a>
+            </li>
+
             {{-- ============================================
                 네트워크 관리
             ============================================ --}}
@@ -151,9 +174,37 @@
             </li>
 
             <li class="nav-item">
+                <a class="nav-link" href="{{ route('admin.partner.country.index') }}">
+                    <i class="nav-icon fe fe-globe me-2"></i>
+                    국가별 현황
+                </a>
+            </li>
+
+            <li class="nav-item">
                 <a class="nav-link" href="{{ route('admin.partner.network.tree') }}">
                     <i class="nav-icon fe fe-git-branch me-2"></i>
                     네트워크 트리
+                </a>
+            </li>
+
+            {{-- ============================================
+                시스템 관리
+            ============================================ --}}
+            <li class="nav-item">
+                <div class="navbar-heading">시스템 관리</div>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('admin.partner.activity.logs.index') }}">
+                    <i class="nav-icon fe fe-list me-2"></i>
+                    활동 로그
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('admin.partner.notifications.index') }}">
+                    <i class="nav-icon fe fe-bell me-2"></i>
+                    알림 관리
                 </a>
             </li>
 

@@ -18,10 +18,12 @@ class BulkGenerateController extends Controller
         try {
             $request->validate([
                 'partner_ids' => 'required|array',
-                'partner_ids.*' => 'integer|exists:partner_users,id'
+                'partner_ids.*' => 'integer|exists:partner_users,id',
+                'prefix' => 'nullable|string|max:10'
             ]);
 
             $partnerIds = $request->input('partner_ids');
+            $prefix = $request->input('prefix');
             $successCount = 0;
             $failCount = 0;
             $errors = [];
@@ -44,7 +46,7 @@ class BulkGenerateController extends Controller
                         continue;
                     }
 
-                    $partnerCode = $this->generateUniquePartnerCode($partnerUser->email);
+                    $partnerCode = $this->generateUniquePartnerCode($partnerUser->email, $prefix);
 
                     $partnerUser->update([
                         'partner_code' => $partnerCode,
@@ -98,7 +100,7 @@ class BulkGenerateController extends Controller
     /**
      * 이메일 기반으로 고유한 파트너 코드 생성
      */
-    private function generateUniquePartnerCode(string $email): string
+    private function generateUniquePartnerCode(string $email, string $prefix = null): string
     {
         $maxAttempts = 10;
         $attempt = 0;
@@ -106,25 +108,40 @@ class BulkGenerateController extends Controller
         do {
             $attempt++;
 
-            // 이메일의 사용자명 부분 추출
-            $emailUsername = explode('@', $email)[0];
+            if ($prefix) {
+                // 접두어가 있는 경우
+                $codePrefix = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $prefix));
+                $codePrefix = substr($codePrefix, 0, 8); // 최대 8자리
 
-            // 이메일 사용자명의 처음 4자리 (영문, 숫자만)
-            $emailPrefix = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $emailUsername));
-            $emailPrefix = substr($emailPrefix, 0, 4);
+                // 나머지 자리는 랜덤 생성 (전체 20자리가 되도록)
+                $remainingLength = 20 - strlen($codePrefix);
+                $randomSuffix = '';
+                for ($i = 0; $i < $remainingLength; $i++) {
+                    $randomSuffix .= $this->getRandomChar();
+                }
 
-            // 부족한 자리는 랜덤으로 채움
-            if (strlen($emailPrefix) < 4) {
-                $emailPrefix = str_pad($emailPrefix, 4, $this->getRandomChar(), STR_PAD_RIGHT);
+                $partnerCode = $codePrefix . $randomSuffix;
+            } else {
+                // 이메일의 사용자명 부분 추출
+                $emailUsername = explode('@', $email)[0];
+
+                // 이메일 사용자명의 처음 4자리 (영문, 숫자만)
+                $emailPrefix = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $emailUsername));
+                $emailPrefix = substr($emailPrefix, 0, 4);
+
+                // 부족한 자리는 랜덤으로 채움
+                if (strlen($emailPrefix) < 4) {
+                    $emailPrefix = str_pad($emailPrefix, 4, $this->getRandomChar(), STR_PAD_RIGHT);
+                }
+
+                // 나머지 16자리는 랜덤 생성
+                $randomSuffix = '';
+                for ($i = 0; $i < 16; $i++) {
+                    $randomSuffix .= $this->getRandomChar();
+                }
+
+                $partnerCode = $emailPrefix . $randomSuffix;
             }
-
-            // 나머지 16자리는 랜덤 생성
-            $randomSuffix = '';
-            for ($i = 0; $i < 16; $i++) {
-                $randomSuffix .= $this->getRandomChar();
-            }
-
-            $partnerCode = $emailPrefix . $randomSuffix;
 
             // 중복 확인
             $exists = PartnerUser::where('partner_code', $partnerCode)->exists();

@@ -25,8 +25,8 @@ class RejectController extends Controller
         $validatedData = $request->validate([
             'rejection_reason' => 'required|string|max:1000',
             'admin_notes' => 'nullable|string|max:1000',
-            'notify_user' => 'boolean',
-            'allow_reapply' => 'boolean',
+            'notify_user' => 'nullable|in:0,1',
+            'allow_reapply' => 'nullable|in:0,1',
             'feedback_message' => 'nullable|string|max:500'
         ], [
             'rejection_reason.required' => '거부 사유를 입력해주세요.',
@@ -47,11 +47,11 @@ class RejectController extends Controller
             DB::commit();
 
             // 사용자 알림 (옵션)
-            if ($request->boolean('notify_user')) {
+            if ($request->input('notify_user') == '1') {
                 $this->sendRejectionNotification(
                     $application,
                     $validatedData['feedback_message'] ?? null,
-                    $request->boolean('allow_reapply')
+                    $request->input('allow_reapply') == '1'
                 );
             }
 

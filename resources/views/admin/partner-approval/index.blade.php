@@ -4,8 +4,9 @@
 
 @section('content')
 <div class="container-fluid">
+
     <!-- 헤더 -->
-    <div class="row mb-4">
+    <section class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -31,10 +32,10 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- 통계 카드 -->
-    <div class="row mb-4">
+    <section class="row mb-4">
         <div class="col-lg-3 col-md-6">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
@@ -108,10 +109,10 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- 필터 -->
-    <div class="card mb-4">
+    <section class="card mb-4">
         <div class="card-body">
             <form method="GET" action="{{ route('admin.partner.approval.index') }}">
                 <div class="row">
@@ -174,7 +175,7 @@
                 </div>
             </form>
         </div>
-    </div>
+    </section>
 
     <!-- 지원서 목록 -->
     <div class="card">
@@ -277,6 +278,13 @@
                                                     onclick="quickReject({{ $application->id }})">
                                                 <i class="fe fe-x"></i>
                                             </button>
+                                        @elseif($application->application_status === 'approved')
+                                            <button type="button"
+                                                    class="btn btn-outline-warning"
+                                                    title="승인 취소"
+                                                    onclick="quickRevoke({{ $application->id }})">
+                                                <i class="fe fe-rotate-ccw"></i>
+                                            </button>
                                         @endif
                                     </div>
                                 </td>
@@ -327,7 +335,15 @@
                             <div class="timeline-content">
                                 <h6 class="mb-1">{{ $activity['action'] }}</h6>
                                 <p class="mb-1">{{ $activity['user_name'] }}</p>
-                                <small class="text-muted">{{ $activity['date']->diffForHumans() }}</small>
+                                <small class="text-muted">
+                                    @if($activity['date'] && method_exists($activity['date'], 'diffForHumans'))
+                                        {{ $activity['date']->diffForHumans() }}
+                                    @elseif($activity['date'])
+                                        {{ \Carbon\Carbon::parse($activity['date'])->diffForHumans() }}
+                                    @else
+                                        시간 미정
+                                    @endif
+                                </small>
                                 @if($activity['admin'])
                                     <small class="text-muted">by {{ $activity['admin']->name }}</small>
                                 @endif
@@ -343,33 +359,7 @@
 </div>
 
 <!-- Quick Action Modals -->
-<div class="modal fade" id="quickApproveModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">빠른 승인</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>이 파트너 신청을 승인하시겠습니까?</p>
-                <div class="form-group">
-                    <label for="approval_notes">승인 메모 (선택사항)</label>
-                    <textarea id="approval_notes" class="form-control" rows="2" placeholder="승인과 관련된 메모를 입력하세요..."></textarea>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="notify_user_approve" checked>
-                    <label class="form-check-label" for="notify_user_approve">
-                        사용자에게 알림 전송
-                    </label>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                <button type="button" class="btn btn-success" onclick="confirmApprove()">승인 확인</button>
-            </div>
-        </div>
-    </div>
-</div>
+@includeIf("jiny-partner::admin.partner-approval.partials.quick_approve_modal")
 
 <div class="modal fade" id="quickRejectModal" tabindex="-1">
     <div class="modal-dialog">
@@ -394,6 +384,49 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
                 <button type="button" class="btn btn-danger" onclick="confirmReject()">거부 확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 승인 취소 모달 -->
+<div class="modal fade" id="quickRevokeModal" tabindex="-1" aria-labelledby="quickRevokeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">승인 취소</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning d-flex align-items-center" role="alert">
+                    <i class="fe fe-alert-triangle me-2"></i>
+                    <div>
+                        <strong>주의!</strong> 이 작업은 파트너 회원 등록을 해제합니다.
+                    </div>
+                </div>
+                <p>이 파트너 신청의 승인을 취소하시겠습니까?</p>
+                <div class="bg-light p-3 rounded mb-3">
+                    <small class="text-muted">
+                        <strong>승인 취소 시 처리 사항:</strong><br>
+                        • 파트너 회원 계정 삭제<br>
+                        • 신청 상태를 "검토 중"으로 변경<br>
+                        • 파트너 권한 및 데이터 초기화
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label for="revoke_reason">취소 사유 <span class="text-danger">*</span></label>
+                    <textarea id="revoke_reason" class="form-control" rows="3" placeholder="승인 취소 사유를 입력하세요..." required></textarea>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="notify_user_revoke" checked>
+                    <label class="form-check-label" for="notify_user_revoke">
+                        사용자에게 알림 전송
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-warning" onclick="confirmRevoke()">승인 취소 확인</button>
             </div>
         </div>
     </div>
@@ -461,48 +494,9 @@
 <script>
 let currentApplicationId = null;
 
-function quickApprove(applicationId) {
-    currentApplicationId = applicationId;
-    new bootstrap.Modal(document.getElementById('quickApproveModal')).show();
-}
-
 function quickReject(applicationId) {
     currentApplicationId = applicationId;
     new bootstrap.Modal(document.getElementById('quickRejectModal')).show();
-}
-
-function confirmApprove() {
-    if (!currentApplicationId) return;
-
-    const notes = document.getElementById('approval_notes').value;
-    const notify = document.getElementById('notify_user_approve').checked;
-
-    // 승인 요청 전송
-    fetch(`/admin/partner-approval/${currentApplicationId}/approve`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        },
-        body: JSON.stringify({
-            admin_notes: notes,
-            notify_user: notify
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert('승인 처리 중 오류가 발생했습니다.');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('승인 처리 중 오류가 발생했습니다.');
-    });
-
-    bootstrap.Modal.getInstance(document.getElementById('quickApproveModal')).hide();
 }
 
 function confirmReject() {
@@ -516,17 +510,20 @@ function confirmReject() {
         return;
     }
 
+    // FormData로 요청 데이터 생성 (상세페이지와 동일한 방식)
+    const formData = new FormData();
+    formData.append('rejection_reason', reason);
+    formData.append('notify_user', notify ? '1' : '0');
+
     // 거부 요청 전송
-    fetch(`/admin/partner-approval/${currentApplicationId}/reject`, {
+    fetch(`{{ url('admin/partner/approval') }}/${currentApplicationId}/reject`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
         },
-        body: JSON.stringify({
-            rejection_reason: reason,
-            notify_user: notify
-        })
+        body: formData
     })
     .then(response => response.json())
     .then(data => {
@@ -543,5 +540,62 @@ function confirmReject() {
 
     bootstrap.Modal.getInstance(document.getElementById('quickRejectModal')).hide();
 }
+
+// 승인 취소 모달 표시
+function quickRevoke(applicationId) {
+    currentApplicationId = applicationId;
+
+    // 취소 사유 초기화
+    document.getElementById('revoke_reason').value = '';
+
+    // 모달 표시
+    const modal = new bootstrap.Modal(document.getElementById('quickRevokeModal'));
+    modal.show();
+}
+
+// 승인 취소 확인
+function confirmRevoke() {
+    if (!currentApplicationId) return;
+
+    const reason = document.getElementById('revoke_reason').value;
+    const notify = document.getElementById('notify_user_revoke').checked;
+
+    if (!reason.trim()) {
+        alert('취소 사유를 입력해주세요.');
+        return;
+    }
+
+    // FormData로 요청 데이터 생성
+    const formData = new FormData();
+    formData.append('revoke_reason', reason);
+    formData.append('notify_user', notify ? '1' : '0');
+
+    // 승인 취소 요청 전송
+    fetch(`{{ url('admin/partner/approval') }}/${currentApplicationId}/revoke`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('승인이 성공적으로 취소되었습니다.');
+            location.reload();
+        } else {
+            alert(data.message || '승인 취소 처리 중 오류가 발생했습니다.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('승인 취소 처리 중 오류가 발생했습니다.');
+    });
+
+    bootstrap.Modal.getInstance(document.getElementById('quickRevokeModal')).hide();
+}
+
 </script>
 @endpush

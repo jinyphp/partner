@@ -26,40 +26,50 @@ class UserSearchController extends Controller
         // 입력 유효성 검사
         $request->validate([
             'query' => 'required|string|min:2|max:100',
+            'page' => 'nullable|integer|min:1',
             'limit' => 'nullable|integer|min:1|max:100'
         ]);
 
         $searchQuery = trim($request->input('query'));
-        $limit = (int) $request->input('limit', 20); // 기본 20개 제한
+        $page = (int) $request->input('page', 1);
+        $limit = (int) $request->input('limit', 10); // 기본 10개 제한
+        $offset = ($page - 1) * $limit;
 
         Log::info('Sharded user search API request', [
             'query' => $searchQuery,
+            'page' => $page,
             'limit' => $limit,
+            'offset' => $offset,
             'ip' => $request->ip(),
             'user_agent' => $request->userAgent()
         ]);
 
         try {
-            $results = $this->performShardedSearch($searchQuery, $limit);
+            $results = $this->performShardedSearch($searchQuery, $limit, $offset);
 
             Log::info('Sharded user search API completed', [
                 'query' => $searchQuery,
-                'total_found' => count($results),
-                'limit' => $limit
+                'page' => $page,
+                'limit' => $limit,
+                'total_found' => $results['total_found'],
+                'returned_count' => count($results['users'])
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => count($results) > 0 ? '회원 정보를 찾았습니다.' : '검색 결과가 없습니다.',
+                'message' => $results['total_found'] > 0 ? '회원 정보를 찾았습니다.' : '검색 결과가 없습니다.',
                 'query' => $searchQuery,
-                'total_found' => count($results),
+                'page' => $page,
                 'limit' => $limit,
-                'users' => $results
+                'total_found' => $results['total_found'],
+                'total_pages' => $results['total_pages'],
+                'users' => $results['users']
             ]);
 
         } catch (\Exception $e) {
             Log::error('Sharded user search API failed', [
                 'query' => $searchQuery,
+                'page' => $page,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -128,15 +138,16 @@ class UserSearchController extends Controller
     }
 
     /**
-     * 샤딩된 테이블에서 회원 검색 수행
+     * 샤딩된 테이블에서 회원 검색 수행 (페이지네이션 지원)
      *
      * @param string $query
      * @param int $limit
+     * @param int $offset
      * @return array
      */
-    private function performShardedSearch(string $query, int $limit): array
+    private function performShardedSearch(string $query, int $limit, int $offset = 0): array
     {
-        $results = collect();
+        $allResults = collect();
 
         // 샤딩된 테이블 목록 가져오기
         $shardedTables = $this->getShardedUserTables();
@@ -144,12 +155,12 @@ class UserSearchController extends Controller
         Log::info('Starting sharded search', [
             'query' => $query,
             'tables' => $shardedTables,
-            'limit' => $limit
+            'limit' => $limit,
+            'offset' => $offset
         ]);
 
+        // 먼저 모든 샤드에서 전체 결과를 수집 (매칭 점수 계산 포함)
         foreach ($shardedTables as $tableName) {
-            if ($results->count() >= $limit) break;
-
             try {
                 Log::info("Searching in table: {$tableName}");
 
@@ -170,16 +181,13 @@ class UserSearchController extends Controller
                           ->orWhere('name', 'like', '%' . $query . '%');
                     })
                     ->orderBy('created_at', 'desc')
-                    ->limit($limit - $results->count())
                     ->get();
 
                 Log::info("Found {$users->count()} users in {$tableName}");
 
                 // 결과를 표준 형태로 변환
                 foreach ($users as $user) {
-                    if ($results->count() >= $limit) break;
-
-                    $results->push([
+                    $allResults->push([
                         'id' => $user->id,
                         'uuid' => $user->uuid,
                         'name' => $user->name,
@@ -202,8 +210,31 @@ class UserSearchController extends Controller
             }
         }
 
-        // 매칭 점수로 정렬하여 반환
-        return $results->sortBy('match_score')->values()->toArray();
+        // 매칭 점수로 정렬
+        $sortedResults = $allResults->sortBy('match_score')->values();
+
+        // 전체 결과 수
+        $totalFound = $sortedResults->count();
+
+        // 페이지네이션 적용
+        $paginatedResults = $sortedResults->slice($offset, $limit)->values();
+
+        // 총 페이지 수 계산
+        $totalPages = $limit > 0 ? ceil($totalFound / $limit) : 1;
+
+        Log::info('Pagination results', [
+            'total_found' => $totalFound,
+            'offset' => $offset,
+            'limit' => $limit,
+            'total_pages' => $totalPages,
+            'returned_count' => $paginatedResults->count()
+        ]);
+
+        return [
+            'users' => $paginatedResults->toArray(),
+            'total_found' => $totalFound,
+            'total_pages' => $totalPages
+        ];
     }
 
     /**

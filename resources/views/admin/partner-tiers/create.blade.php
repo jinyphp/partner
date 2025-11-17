@@ -77,29 +77,9 @@
                             @enderror
                         </div>
 
-                        <!-- 계층구조 및 우선순위 설정 -->
+                        <!-- 우선순위 설정 -->
                         <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group mb-3">
-                                    <label for="parent_tier_id" class="form-label">상위 등급</label>
-                                    <select id="parent_tier_id"
-                                            name="parent_tier_id"
-                                            class="form-select @error('parent_tier_id') is-invalid @enderror">
-                                        <option value="">최상위 등급</option>
-                                        @foreach($availableParentTiers ?? [] as $tier)
-                                            <option value="{{ $tier->id }}"
-                                                    {{ old('parent_tier_id') == $tier->id ? 'selected' : '' }}>
-                                                {{ $tier->tier_name }} ({{ $tier->commission_rate }}%)
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @error('parent_tier_id')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                    <small class="form-text text-muted">이 등급의 상위 등급을 선택하세요.</small>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="form-group mb-3">
                                     <label for="priority_level" class="form-label">우선순위 <span class="text-danger">*</span></label>
                                     <input type="number"
@@ -109,7 +89,7 @@
                                            placeholder="10"
                                            value="{{ old('priority_level', 10) }}"
                                            min="1"
-                                           max="999"
+                                           max="99"
                                            required>
                                     @error('priority_level')
                                         <div class="invalid-feedback">{{ $message }}</div>
@@ -119,22 +99,23 @@
                             </div>
                             <div class="col-md-4">
                                 <div class="form-group mb-3">
-                                    <label for="display_order" class="form-label">표시 순서</label>
+                                    <label for="sort_order" class="form-label">정렬 순서</label>
                                     <input type="number"
-                                           id="display_order"
-                                           name="display_order"
-                                           class="form-control @error('display_order') is-invalid @enderror"
+                                           id="sort_order"
+                                           name="sort_order"
+                                           class="form-control @error('sort_order') is-invalid @enderror"
                                            placeholder="자동 설정"
-                                           value="{{ old('display_order') }}"
-                                           min="1"
+                                           value="{{ old('sort_order', 0) }}"
+                                           min="0"
                                            max="999">
-                                    @error('display_order')
+                                    @error('sort_order')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
-                                    <small class="form-text text-muted">비워두면 자동으로 설정됩니다.</small>
+                                    <small class="form-text text-muted">0이면 우선순위로 자동 정렬됩니다.</small>
                                 </div>
                             </div>
                         </div>
+
 
                         <!-- 수수료 설정 -->
                         <div class="row">
@@ -201,36 +182,62 @@
 
                         <hr>
 
-                        <h6 class="mb-3">성과 기준</h6>
+                        <h6 class="mb-3">비용 관리 설정</h6>
+
                         <div class="row">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <div class="form-group mb-3">
-                                    <label for="min_completed_jobs" class="form-label">최소 완료 작업 수</label>
-                                    <input type="number"
-                                           id="min_completed_jobs"
-                                           name="min_completed_jobs"
-                                           class="form-control @error('min_completed_jobs') is-invalid @enderror"
-                                           placeholder="0"
-                                           value="{{ old('min_completed_jobs', 0) }}"
-                                           min="0">
-                                    @error('min_completed_jobs')
+                                    <label for="registration_fee" class="form-label">가입비</label>
+                                    <div class="input-group">
+                                        <input type="number"
+                                               id="registration_fee"
+                                               name="registration_fee"
+                                               class="form-control @error('registration_fee') is-invalid @enderror"
+                                               placeholder="0"
+                                               value="{{ old('registration_fee', 0) }}"
+                                               min="0"
+                                               step="1000">
+                                        <span class="input-group-text">원</span>
+                                    </div>
+                                    @error('registration_fee')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <div class="form-group mb-3">
-                                    <label for="min_rating" class="form-label">최소 평점</label>
-                                    <input type="number"
-                                           id="min_rating"
-                                           name="min_rating"
-                                           class="form-control @error('min_rating') is-invalid @enderror"
-                                           placeholder="0"
-                                           value="{{ old('min_rating', 0) }}"
-                                           min="0"
-                                           max="5"
-                                           step="0.01">
-                                    @error('min_rating')
+                                    <label for="monthly_fee" class="form-label">월 유지비</label>
+                                    <div class="input-group">
+                                        <input type="number"
+                                               id="monthly_fee"
+                                               name="monthly_fee"
+                                               class="form-control @error('monthly_fee') is-invalid @enderror"
+                                               placeholder="0"
+                                               value="{{ old('monthly_fee', 0) }}"
+                                               min="0"
+                                               step="1000">
+                                        <span class="input-group-text">원/월</span>
+                                    </div>
+                                    @error('monthly_fee')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label for="annual_fee" class="form-label">연 유지비</label>
+                                    <div class="input-group">
+                                        <input type="number"
+                                               id="annual_fee"
+                                               name="annual_fee"
+                                               class="form-control @error('annual_fee') is-invalid @enderror"
+                                               placeholder="0"
+                                               value="{{ old('annual_fee', 0) }}"
+                                               min="0"
+                                               step="10000">
+                                        <span class="input-group-text">원/년</span>
+                                    </div>
+                                    @error('annual_fee')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
@@ -240,59 +247,29 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label for="min_punctuality_rate" class="form-label">최소 시간 준수율 (%)</label>
-                                    <input type="number"
-                                           id="min_punctuality_rate"
-                                           name="min_punctuality_rate"
-                                           class="form-control @error('min_punctuality_rate') is-invalid @enderror"
-                                           placeholder="0"
-                                           value="{{ old('min_punctuality_rate', 0) }}"
-                                           min="0"
-                                           max="100"
-                                           step="0.01">
-                                    @error('min_punctuality_rate')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <label for="fee_waiver_available" class="form-label mb-1">비용 면제 가능</label>
+                                            <small class="text-muted d-block">성과 우수자 등에게 비용 면제 가능 여부</small>
+                                        </div>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input"
+                                                   type="checkbox"
+                                                   role="switch"
+                                                   id="fee_waiver_available"
+                                                   name="fee_waiver_available"
+                                                   value="1"
+                                                   {{ old('fee_waiver_available') ? 'checked' : '' }}>
+                                            <label class="form-check-label" for="fee_waiver_available"></label>
+                                        </div>
+                                    </div>
+                                    @error('fee_waiver_available')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
                                     @enderror
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label for="min_satisfaction_rate" class="form-label">최소 고객 만족도 (%)</label>
-                                    <input type="number"
-                                           id="min_satisfaction_rate"
-                                           name="min_satisfaction_rate"
-                                           class="form-control @error('min_satisfaction_rate') is-invalid @enderror"
-                                           placeholder="0"
-                                           value="{{ old('min_satisfaction_rate', 0) }}"
-                                           min="0"
-                                           max="100"
-                                           step="0.01">
-                                    @error('min_satisfaction_rate')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label for="sort_order" class="form-label">정렬 순서</label>
-                                    <input type="number"
-                                           id="sort_order"
-                                           name="sort_order"
-                                           class="form-control @error('sort_order') is-invalid @enderror"
-                                           placeholder="0"
-                                           value="{{ old('sort_order', 0) }}"
-                                           min="0">
-                                    @error('sort_order')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                    <small class="form-text text-muted">숫자가 작을수록 먼저 표시됩니다.</small>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group mb-4">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <label for="is_active" class="form-label mb-1">등급 활성화</label>
@@ -311,6 +288,22 @@
                                     </div>
                                     @error('is_active')
                                         <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-group mb-3">
+                                    <label for="fee_structure_notes" class="form-label">비용 구조 특별 조건</label>
+                                    <textarea id="fee_structure_notes"
+                                              name="fee_structure_notes"
+                                              class="form-control @error('fee_structure_notes') is-invalid @enderror"
+                                              rows="3"
+                                              placeholder="비용 면제 정책, 할인 조건 등 특별 사항을 입력하세요">{{ old('fee_structure_notes') }}</textarea>
+                                    @error('fee_structure_notes')
+                                        <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
                             </div>

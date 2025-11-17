@@ -213,15 +213,34 @@ class PartnerApplication extends Model
      */
     public function approve($adminId)
     {
-        // 이미 승인된 경우 기존 파트너 반환
-        if ($this->application_status === 'approved') {
-            $existingPartner = PartnerUser::where('user_id', $this->user_id)
-                ->where('user_table', $this->shard_number ? 'user_' . str_pad($this->shard_number, 3, '0', STR_PAD_LEFT) : 'users')
-                ->first();
+        $userTable = $this->shard_number ? 'user_' . str_pad($this->shard_number, 3, '0', STR_PAD_LEFT) : 'users';
 
-            if ($existingPartner) {
-                return $existingPartner;
-            }
+        // 이미 파트너 계정이 존재하는지 먼저 확인 (승인 상태와 관계없이)
+        $existingPartner = PartnerUser::where('user_id', $this->user_id)
+            ->where('user_table', $userTable)
+            ->first();
+
+        if ($existingPartner) {
+            // 이미 파트너가 존재하는 경우, 신청서만 승인 상태로 업데이트
+            $this->update([
+                'application_status' => 'approved',
+                'approval_date' => now(),
+                'approved_by' => $adminId
+            ]);
+
+            \Log::info('기존 파트너 계정이 존재하여 신청서만 승인 처리', [
+                'application_id' => $this->id,
+                'existing_partner_id' => $existingPartner->id,
+                'user_id' => $this->user_id,
+                'user_table' => $userTable
+            ]);
+
+            return $existingPartner;
+        }
+
+        // 이미 승인된 경우이지만 파트너 계정이 없다면 재생성
+        if ($this->application_status === 'approved') {
+            return $this->createPartnerUser();
         }
 
         $this->update([
@@ -349,48 +368,87 @@ class PartnerApplication extends Model
             ]
         ];
 
-        // 새 파트너 계정 생성
-        $newPartner = PartnerUser::create([
-            'user_id' => $this->user_id,
-            'user_table' => $this->shard_number ? 'user_' . str_pad($this->shard_number, 3, '0', STR_PAD_LEFT) : 'users',
-            'user_uuid' => $this->user_uuid ?? ($user ? $user->uuid ?? null : null),
-            'shard_number' => $this->shard_number ?? 0,
-            'email' => $this->personal_info['email'] ?? ($user ? $user->email ?? null : null),
-            'name' => $this->personal_info['name'] ?? ($user ? $user->name ?? null : null),
-            'partner_tier_id' => $defaultTier->id,
-            'status' => 'active',
-            'total_completed_jobs' => 0,
-            'average_rating' => 0,
-            'punctuality_rate' => 0,
-            'satisfaction_rate' => 0,
-            'partner_joined_at' => now(),
-            'tier_assigned_at' => now(),
-            'profile_data' => $profileData,
-            'admin_notes' => '파트너 지원서 승인을 통해 등록됨',
-            'created_by' => $this->approved_by,
+        // 기존 파트너 계정이 있는지 확인
+        $userTable = $this->shard_number ? 'user_' . str_pad($this->shard_number, 3, '0', STR_PAD_LEFT) : 'users';
+        $existingPartner = PartnerUser::where('user_id', $this->user_id)
+            ->where('user_table', $userTable)
+            ->first();
 
-            // 계층 구조 관련 필드
-            'parent_id' => $parentId,
-            'level' => $level,
-            'tree_path' => $treePath,
-            'children_count' => 0,
-            'total_children_count' => 0,
-            'max_children' => $defaultTier->max_children ?? 10,
-            'personal_commission_rate' => $defaultTier->default_commission_rate ?? 0,
-            'management_bonus_rate' => $defaultTier->default_bonus_rate ?? 0,
-            'discount_rate' => $defaultTier->default_discount_rate ?? 0,
-            'monthly_sales' => 0,
-            'total_sales' => 0,
-            'team_sales' => 0,
-            'earned_commissions' => 0,
-            'can_recruit' => $canRecruit,
-            'last_activity_at' => now(),
-            'network_settings' => [
-                'recruitment_enabled' => $canRecruit,
-                'commission_sharing' => true,
-                'auto_tier_upgrade' => true
-            ]
-        ]);
+        if ($existingPartner) {
+            // 이미 존재하는 파트너가 있다면 해당 파트너 반환
+            \Log::info('기존 파트너 계정 발견, 새로 생성하지 않고 기존 계정 반환', [
+                'application_id' => $this->id,
+                'existing_partner_id' => $existingPartner->id,
+                'user_id' => $this->user_id,
+                'user_table' => $userTable
+            ]);
+            return $existingPartner;
+        }
+
+        // 새 파트너 계정 생성 (안전한 생성)
+        try {
+            $newPartner = PartnerUser::create([
+                'user_id' => $this->user_id,
+                'user_table' => $this->shard_number ? 'user_' . str_pad($this->shard_number, 3, '0', STR_PAD_LEFT) : 'users',
+                'user_uuid' => $this->user_uuid ?? ($user ? $user->uuid ?? null : null),
+                'shard_number' => $this->shard_number ?? 0,
+                'email' => $this->personal_info['email'] ?? ($user ? $user->email ?? null : null),
+                'name' => $this->personal_info['name'] ?? ($user ? $user->name ?? null : null),
+                'partner_tier_id' => $defaultTier->id,
+                'status' => 'active',
+                'total_completed_jobs' => 0,
+                'average_rating' => 0,
+                'punctuality_rate' => 0,
+                'satisfaction_rate' => 0,
+                'partner_joined_at' => now(),
+                'tier_assigned_at' => now(),
+                'profile_data' => $profileData,
+                'admin_notes' => '파트너 지원서 승인을 통해 등록됨',
+                'created_by' => $this->approved_by,
+
+                // 계층 구조 관련 필드
+                'parent_id' => $parentId,
+                'level' => $level,
+                'tree_path' => $treePath,
+                'children_count' => 0,
+                'total_children_count' => 0,
+                'max_children' => 10,
+                'individual_commission_rate' => 0,
+                'discount_rate' => 0,
+                'monthly_sales' => 0,
+                'total_sales' => 0,
+                'team_sales' => 0,
+                'earned_commissions' => 0,
+                'can_recruit' => true,
+                'last_activity_at' => now(),
+                'network_settings' => [
+                    'recruitment_enabled' => true,
+                    'commission_sharing' => true,
+                    'auto_tier_upgrade' => true
+                ]
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // UNIQUE 제약 위반 시 기존 파트너 조회하여 반환
+            if (str_contains($e->getMessage(), 'UNIQUE constraint failed')) {
+                \Log::warning('파트너 생성 중 UNIQUE 제약 위반, 기존 파트너 조회', [
+                    'application_id' => $this->id,
+                    'user_id' => $this->user_id,
+                    'user_table' => $userTable,
+                    'error' => $e->getMessage()
+                ]);
+
+                $existingPartner = PartnerUser::where('user_id', $this->user_id)
+                    ->where('user_table', $userTable)
+                    ->first();
+
+                if ($existingPartner) {
+                    return $existingPartner;
+                }
+            }
+
+            // 다른 데이터베이스 오류는 그대로 throw
+            throw $e;
+        }
 
         // 추천인이 있는 경우 계층 구조 설정
         if ($referrerPartner && $newPartner) {

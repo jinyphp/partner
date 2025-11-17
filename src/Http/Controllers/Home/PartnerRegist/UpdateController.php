@@ -56,7 +56,7 @@ class UpdateController extends PartnerController
                 'application_status' => $application->application_status,
                 'allowed_statuses' => ['draft', 'submitted', 'rejected']
             ]);
-            return redirect()->route('home.partner.regist.status', $application->id)
+            return redirect()->route('home.partner.regist.status')
                 ->with('error', '현재 상태에서는 신청서를 수정할 수 없습니다.');
         }
 
@@ -202,7 +202,7 @@ class UpdateController extends PartnerController
                 return response()->json([
                     'success' => true,
                     'message' => $message,
-                    'redirect' => route('home.partner.regist.status', $application->id),
+                    'redirect' => route('home.partner.regist.status'),
                     'application_status' => $application->application_status,
                     'application_id' => $application->id
                 ]);
@@ -210,10 +210,10 @@ class UpdateController extends PartnerController
 
             // 일반 폼 제출 응답 (기존 방식)
             if ($application->application_status === 'reapplied') {
-                return redirect()->route('home.partner.regist.status', $application->id)
+                return redirect()->route('home.partner.regist.status')
                     ->with('success', '재신청이 성공적으로 제출되었습니다! 재검토 후 연락드리겠습니다.');
             } else {
-                return redirect()->route('home.partner.regist.status', $application->id)
+                return redirect()->route('home.partner.regist.status')
                     ->with('success', '신청서가 성공적으로 수정되었습니다!');
             }
 

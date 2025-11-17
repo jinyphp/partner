@@ -5,7 +5,7 @@
 @section('content')
 <div class="container-fluid">
     <!-- 헤더 -->
-    <div class="row mb-4">
+    <section class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -16,16 +16,19 @@
                     <a href="{{ route('admin.partner.dashboard') }}" class="btn btn-outline-secondary me-2">
                         <i class="fe fe-arrow-left me-2"></i>파트너 관리
                     </a>
+                    <a href="{{ route('admin.partner.type.target') }}" class="btn btn-outline-info me-2">
+                        <i class="fe fe-target me-2"></i>목표관리
+                    </a>
                     <a href="{{ route('admin.' . $routePrefix . '.create') }}" class="btn btn-primary">
                         <i class="fe fe-plus me-2"></i>새 타입 생성
                     </a>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- 통계 카드 -->
-    <div class="row mb-4">
+    <section class="row mb-4">
         <div class="col-md-3">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
@@ -94,10 +97,10 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- 필터 -->
-    <div class="card mb-4">
+    <section class="card mb-4">
         <div class="card-body">
             <form method="GET" action="{{ route('admin.' . $routePrefix . '.index') }}">
                 <div class="row">
@@ -108,7 +111,7 @@
                                    id="search"
                                    name="search"
                                    class="form-control"
-                                   placeholder="타입 코드, 이름 또는 설명으로 검색..."
+                                   placeholder="타입 코드, 이름, 설명, 전문분야, 스킬로 검색..."
                                    value="{{ $searchValue }}">
                         </div>
                     </div>
@@ -122,7 +125,22 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-6 d-flex align-items-end">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="commission_type">수수료 타입</label>
+                            <select id="commission_type" name="commission_type" class="form-control">
+                                <option value="">전체</option>
+                                @if(isset($filterOptions['commission_types']))
+                                    @foreach($filterOptions['commission_types'] as $value => $label)
+                                        <option value="{{ $value }}" {{ ($selectedCommissionType ?? '') === $value ? 'selected' : '' }}>
+                                            {{ $label }}
+                                        </option>
+                                    @endforeach
+                                @endif
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
                         <button type="submit" class="btn btn-outline-primary me-2">
                             <i class="fe fe-search me-1"></i>검색
                         </button>
@@ -133,10 +151,10 @@
                 </div>
             </form>
         </div>
-    </div>
+    </section>
 
     <!-- 타입 목록 -->
-    <div class="card">
+    <section class="card">
         <div class="card-header">
             <h5 class="mb-0">파트너 타입 목록</h5>
         </div>
@@ -146,20 +164,23 @@
                     <table class="table table-hover mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th width="80">코드</th>
-                                <th>타입 정보</th>
-                                <th width="200">전문 분야</th>
+                                <th width="80">순서</th>
+                                <th>타입 정보 / 전문 분야</th>
                                 <th width="150">성과 목표</th>
+                                <th width="180">수수료/비용 정보</th>
                                 <th width="100">파트너</th>
+                                <th width="80">티어</th>
                                 <th width="60">상태</th>
                                 <th width="100">관리</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($items as $item)
+                            @foreach($items as $index => $item)
                             <tr>
                                 <td>
-                                    <code class="bg-light px-2 py-1 rounded">{{ $item->type_code }}</code>
+                                    <div class="text-center">
+                                        <span class="fw-bold">{{ $item->sort_order }}</span>
+                                    </div>
                                 </td>
                                 <td>
                                     <div class="d-flex align-items-center">
@@ -170,14 +191,18 @@
                                             </div>
                                         </div>
                                         <div>
-                                            <strong>{{ $item->type_name }}</strong>
+                                            <div class="d-flex align-items-center mb-1">
+                                                <a href="{{ route('admin.' . $routePrefix . '.show', $item->id) }}"
+                                                   class="text-decoration-none text-dark hover-primary fw-bold me-2"
+                                                   title="상세 정보 보기">{{ $item->type_name }}</a>
+                                                <code class="bg-light px-2 py-1 rounded small">{{ $item->type_code }}</code>
+                                            </div>
                                             @if($item->description)
-                                                <br><small class="text-muted">{{ Str::limit($item->description, 60) }}</small>
+                                                <small class="text-muted">{{ Str::limit($item->description, 60) }}</small>
                                             @endif
                                         </div>
                                     </div>
-                                </td>
-                                <td>
+
                                     <div class="small">
                                         @php
                                             $specialties = $item->specialties;
@@ -202,26 +227,79 @@
                                 </td>
                                 <td>
                                     <div class="small">
-                                        @if($item->target_sales_amount > 0)
+                                        @php
+                                            // 새로운 필드명 우선 사용, fallback으로 기존 필드명
+                                            $salesAmount = $item->min_baseline_sales ?? $item->target_sales_amount ?? 0;
+                                            $supportCases = $item->min_baseline_cases ?? $item->target_support_cases ?? 0;
+                                            $qualityScore = $item->baseline_quality_score ?? 0;
+                                            $clients = $item->min_baseline_clients ?? 0;
+                                        @endphp
+
+                                        @if($salesAmount > 0)
                                             <div class="mb-1">
-                                                <strong>매출:</strong> {{ number_format($item->target_sales_amount / 10000) }}만원
+                                                <strong>매출:</strong> {{ number_format($salesAmount / 10000) }}만원
                                             </div>
                                         @endif
-                                        @if($item->target_support_cases > 0)
+
+                                        @if($supportCases > 0)
                                             <div class="mb-1">
-                                                <strong>지원:</strong> {{ number_format($item->target_support_cases) }}건
+                                                <strong>지원:</strong> {{ number_format($supportCases) }}건
                                             </div>
                                         @endif
-                                        @if($item->commission_bonus_rate > 0)
-                                            <div class="text-success">
-                                                <strong>보너스:</strong> +{{ $item->commission_bonus_rate }}%
+
+                                        @if($qualityScore > 0)
+                                            <div class="mb-1">
+                                                <strong>품질:</strong> {{ number_format($qualityScore, 1) }}점
                                             </div>
                                         @endif
+
+                                        @if($clients > 0)
+                                            <div class="mb-1">
+                                                <strong>고객:</strong> {{ number_format($clients) }}명
+                                            </div>
+                                        @endif
+
+                                        @if($salesAmount <= 0 && $supportCases <= 0 && $qualityScore <= 0 && $clients <= 0)
+                                            <div class="text-muted">미설정</div>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="small">
+                                        <!-- 수수료 정보 -->
+                                        @if($item->default_commission_type === 'percentage')
+                                            <div class="mb-1">
+                                                <span class="badge bg-success fs-7">{{ $item->default_commission_rate }}%</span>
+                                            </div>
+                                        @elseif($item->default_commission_type === 'fixed_amount')
+                                            <div class="mb-1">
+                                                <span class="badge bg-warning fs-7">{{ number_format($item->default_commission_amount) }}원/건</span>
+                                            </div>
+                                        @endif
+
+                                        <!-- 등록비 정보 -->
+                                        @if($item->registration_fee > 0)
+                                            <div class="mb-1">
+                                                <strong>등록비:</strong> {{ number_format($item->registration_fee / 10000) }}만원
+                                            </div>
+                                        @endif
+
+                                        <!-- 월 유지비 정보 -->
+                                        @if($item->monthly_maintenance_fee > 0)
+                                            <div class="text-muted">
+                                                <strong>월비:</strong> {{ number_format($item->monthly_maintenance_fee / 10000) }}만원
+                                            </div>
+                                        @endif
+
                                     </div>
                                 </td>
                                 <td class="text-center">
                                     <span class="fw-bold">{{ $item->partners_count }}</span>
                                     <small class="text-muted">명</small>
+                                </td>
+                                <td class="text-center">
+                                    <span class="fw-bold">{{ $item->partner_tiers_count ?? 0 }}</span>
+                                    <small class="text-muted">개</small>
                                 </td>
                                 <td>
                                     @if($item->is_active)
@@ -279,7 +357,7 @@
                 </div>
             @endif
         </div>
-    </div>
+    </section>
 </div>
 
 <!-- 삭제 확인 모달 -->
@@ -331,6 +409,18 @@
 /* 카드 그림자 효과 */
 .shadow-sm {
     box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+/* 타이틀 링크 hover 효과 */
+.hover-primary:hover {
+    color: var(--bs-primary) !important;
+    text-decoration: underline !important;
+    transition: all 0.2s ease-in-out;
+}
+
+/* 테이블 행 hover 효과 */
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
 }
 </style>
 @endpush

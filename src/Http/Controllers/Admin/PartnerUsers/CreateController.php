@@ -5,6 +5,7 @@ namespace Jiny\Partner\Http\Controllers\Admin\PartnerUsers;
 use App\Http\Controllers\Controller;
 use Jiny\Partner\Models\PartnerUser;
 use Jiny\Partner\Models\PartnerTier;
+use Jiny\Partner\Models\PartnerType;
 
 class CreateController extends Controller
 {
@@ -26,6 +27,9 @@ class CreateController extends Controller
      */
     public function __invoke()
     {
+        // 활성화된 파트너 타입 목록
+        $partnerTypes = PartnerType::active()->orderBy('sort_order', 'asc')->orderBy('type_name', 'asc')->get();
+
         // 활성화된 파트너 등급 목록
         $partnerTiers = PartnerTier::active()->orderBy('priority_level')->get();
 
@@ -40,6 +44,7 @@ class CreateController extends Controller
         return view("{$this->viewPath}.create", [
             'title' => $this->title,
             'routePrefix' => $this->routePrefix,
+            'partnerTypes' => $partnerTypes,
             'partnerTiers' => $partnerTiers,
             'statusOptions' => $statusOptions
         ]);

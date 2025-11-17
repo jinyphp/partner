@@ -4,8 +4,9 @@
 
 @section('content')
 <div class="container-fluid">
+
     <!-- 헤더 -->
-    <div class="row mb-4">
+    <section class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -29,10 +30,10 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- 타입 상태 요약 카드 -->
-    <div class="row mb-4">
+    <section class="row mb-4">
         <div class="col-md-3">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
@@ -102,9 +103,9 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
-    <div class="row">
+    <section class="row">
         <div class="col-lg-8">
             <!-- 기본 정보 -->
             <div class="card mb-4">
@@ -243,85 +244,120 @@
                 </div>
             </div>
 
-            <!-- 성과 목표 -->
+            <!-- 최소 기준치 시스템 (통합된 성과 목표) -->
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
-                        <i class="fe fe-target me-2"></i>성과 목표
+                        <i class="fe fe-target me-2"></i>최소 기준치 시스템
                     </h5>
+                    <small class="text-muted">파트너가 달성해야 하는 최소 성과 기준</small>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-4">
-                            <div class="mb-3">
+                        <div class="col-md-6 col-lg-4 col-xl-2-4">
+                            <div class="mb-4">
                                 <div class="d-flex align-items-center mb-2">
-                                    <i class="fe fe-dollar-sign text-muted me-2"></i>
-                                    <label class="form-label text-muted mb-0">목표 매출액</label>
+                                    <div class="icon-shape icon-sm bg-primary text-white rounded-circle me-2">
+                                        <i class="fe fe-dollar-sign"></i>
+                                    </div>
+                                    <label class="form-label text-muted mb-0 fw-medium">기준 매출</label>
                                 </div>
-                                <div class="fs-4 fw-bold text-primary">{{ number_format($item->target_sales_amount / 10000) }}<small class="fs-6 text-muted">만원</small></div>
+                                @if($item->min_baseline_sales > 0)
+                                    <div class="fs-4 fw-bold text-primary">{{ number_format($item->min_baseline_sales / 10000) }}<small class="fs-6 text-muted ms-1">만원</small></div>
+                                    <small class="text-muted">연간 최소 달성 매출</small>
+                                @else
+                                    <div class="text-muted">미설정</div>
+                                @endif
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
+
+                        <div class="col-md-6 col-lg-4 col-xl-2-4">
+                            <div class="mb-4">
                                 <div class="d-flex align-items-center mb-2">
-                                    <i class="fe fe-help-circle text-muted me-2"></i>
-                                    <label class="form-label text-muted mb-0">목표 지원 건수</label>
+                                    <div class="icon-shape icon-sm bg-success text-white rounded-circle me-2">
+                                        <i class="fe fe-trending-up"></i>
+                                    </div>
+                                    <label class="form-label text-muted mb-0 fw-medium">기준 수익</label>
                                 </div>
-                                <div class="fs-4 fw-bold text-info">{{ number_format($item->target_support_cases) }}<small class="fs-6 text-muted">건</small></div>
+                                @if($item->min_baseline_revenue > 0)
+                                    <div class="fs-4 fw-bold text-success">{{ number_format($item->min_baseline_revenue / 10000) }}<small class="fs-6 text-muted ms-1">만원</small></div>
+                                    <small class="text-muted">연간 최소 순수익</small>
+                                @else
+                                    <div class="text-muted">미설정</div>
+                                @endif
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
+
+                        <div class="col-md-6 col-lg-4 col-xl-2-4">
+                            <div class="mb-4">
                                 <div class="d-flex align-items-center mb-2">
-                                    <i class="fe fe-percent text-muted me-2"></i>
-                                    <label class="form-label text-muted mb-0">추가 수수료율</label>
+                                    <div class="icon-shape icon-sm bg-info text-white rounded-circle me-2">
+                                        <i class="fe fe-file-text"></i>
+                                    </div>
+                                    <label class="form-label text-muted mb-0 fw-medium">기준 건수</label>
                                 </div>
-                                <div class="fs-4 fw-bold text-success">{{ $item->commission_bonus_rate }}<small class="fs-6 text-muted">%</small></div>
+                                @if($item->min_baseline_cases > 0)
+                                    <div class="fs-4 fw-bold text-info">{{ number_format($item->min_baseline_cases) }}<small class="fs-6 text-muted ms-1">건</small></div>
+                                    <small class="text-muted">월간 최소 처리 건수</small>
+                                @else
+                                    <div class="text-muted">미설정</div>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 col-lg-4 col-xl-2-4">
+                            <div class="mb-4">
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="icon-shape icon-sm bg-warning text-white rounded-circle me-2">
+                                        <i class="fe fe-users"></i>
+                                    </div>
+                                    <label class="form-label text-muted mb-0 fw-medium">기준 고객</label>
+                                </div>
+                                @if($item->min_baseline_clients > 0)
+                                    <div class="fs-4 fw-bold text-warning">{{ number_format($item->min_baseline_clients) }}<small class="fs-6 text-muted ms-1">명</small></div>
+                                    <small class="text-muted">관리 고객 최소 수</small>
+                                @else
+                                    <div class="text-muted">미설정</div>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 col-lg-4 col-xl-2-4">
+                            <div class="mb-4">
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="icon-shape icon-sm bg-danger text-white rounded-circle me-2">
+                                        <i class="fe fe-star"></i>
+                                    </div>
+                                    <label class="form-label text-muted mb-0 fw-medium">품질 점수</label>
+                                </div>
+                                @if($item->baseline_quality_score > 0)
+                                    <div class="fs-4 fw-bold text-danger">{{ number_format($item->baseline_quality_score, 1) }}<small class="fs-6 text-muted ms-1">점</small></div>
+                                    <small class="text-muted">최소 품질 평가 점수</small>
+                                @else
+                                    <div class="text-muted">미설정</div>
+                                @endif
                             </div>
                         </div>
                     </div>
+
+                    @php
+                        $hasBaselines = $item->min_baseline_sales > 0 || $item->min_baseline_revenue > 0 ||
+                                      $item->min_baseline_cases > 0 || $item->min_baseline_clients > 0 ||
+                                      $item->baseline_quality_score > 0;
+                    @endphp
+
+                    @if(!$hasBaselines)
+                        <div class="text-center py-4">
+                            <div class="icon-shape icon-lg bg-light text-muted rounded-circle mx-auto mb-3">
+                                <i class="fe fe-info"></i>
+                            </div>
+                            <h6 class="text-muted">기준치가 설정되지 않았습니다</h6>
+                            <p class="text-muted mb-0 small">이 파트너 타입에는 아직 최소 성과 기준이 설정되어 있지 않습니다.</p>
+                        </div>
+                    @endif
                 </div>
             </div>
 
-            <!-- 권한 및 접근 -->
-            @if($item->permissions || $item->access_levels)
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fe fe-shield me-2"></i>권한 및 접근
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        @if($item->permissions && count($item->permissions) > 0)
-                            <div class="mb-3">
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="fe fe-key text-muted me-2"></i>
-                                    <label class="form-label text-muted mb-0">타입별 권한</label>
-                                </div>
-                                <div>
-                                    @foreach($item->permissions as $permission)
-                                        <span class="badge bg-dark me-1 mb-1">{{ $permission }}</span>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endif
-
-                        @if($item->access_levels && count($item->access_levels) > 0)
-                            <div class="mb-3">
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="fe fe-unlock text-muted me-2"></i>
-                                    <label class="form-label text-muted mb-0">접근 레벨</label>
-                                </div>
-                                <div>
-                                    @foreach($item->access_levels as $level)
-                                        <span class="badge bg-secondary me-1 mb-1">{{ $level }}</span>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            @endif
 
             <!-- 교육 및 인증 -->
             @if($item->training_requirements || $item->training_hours_required > 0 || $item->certification_valid_until)
@@ -514,7 +550,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 </div>
 
 <!-- 삭제 확인 모달 -->
@@ -566,6 +602,34 @@
 /* 카드 그림자 효과 */
 .shadow-sm {
     box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+/* 5열 그리드를 위한 커스텀 클래스 */
+@media (min-width: 1200px) {
+    .col-xl-2-4 {
+        -ms-flex: 0 0 20%;
+        flex: 0 0 20%;
+        max-width: 20%;
+    }
+}
+
+/* 통합 성과 목표 카드 스타일 */
+.icon-shape {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.icon-shape.icon-sm {
+    width: 2rem;
+    height: 2rem;
+}
+
+.icon-shape.icon-lg {
+    width: 4rem;
+    height: 4rem;
 }
 </style>
 @endpush

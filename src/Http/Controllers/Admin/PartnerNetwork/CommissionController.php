@@ -124,7 +124,7 @@ class CommissionController extends Controller
         $request->validate([
             'commission_ids' => 'required|array',
             'commission_ids.*' => 'exists:partner_commissions,id',
-            'action' => 'required|in:calculate,pay,cancel'
+            'action' => 'required|in:calculate,cancel'
         ]);
 
         $successful = 0;
@@ -142,15 +142,6 @@ class CommissionController extends Controller
                         } else {
                             $failed++;
                             $errors[] = "커미션 ID {$commissionId}: 계산 불가";
-                        }
-                        break;
-
-                    case 'pay':
-                        if ($commission->markAsPaid($request->notes)) {
-                            $successful++;
-                        } else {
-                            $failed++;
-                            $errors[] = "커미션 ID {$commissionId}: 지급 처리 불가";
                         }
                         break;
 
@@ -184,7 +175,9 @@ class CommissionController extends Controller
     public function show($id)
     {
         $commission = PartnerCommission::with([
+            'partner.partnerType',
             'partner.partnerTier',
+            'sourcePartner.partnerType',
             'sourcePartner.partnerTier'
         ])->findOrFail($id);
 
@@ -254,19 +247,20 @@ class CommissionController extends Controller
         }
 
         $total = $query->sum('commission_amount');
-        $paid = $query->where('status', 'paid')->sum('commission_amount');
         $pending = $query->where('status', 'pending')->sum('commission_amount');
         $calculated = $query->where('status', 'calculated')->sum('commission_amount');
+        $cancelled = $query->where('status', 'cancelled')->sum('commission_amount');
 
         return [
             'total_commission' => $total,
-            'paid_commission' => $paid,
             'pending_commission' => $pending,
             'calculated_commission' => $calculated,
-            'unpaid_commission' => $pending + $calculated,
+            'cancelled_commission' => $cancelled,
+            'active_commission' => $pending + $calculated, // 활성 커미션 (대기 + 계산완료)
             'total_count' => $query->count(),
-            'paid_count' => $query->where('status', 'paid')->count(),
             'pending_count' => $query->where('status', 'pending')->count(),
+            'calculated_count' => $query->where('status', 'calculated')->count(),
+            'cancelled_count' => $query->where('status', 'cancelled')->count(),
             'average_commission' => $query->count() > 0 ? round($total / $query->count(), 2) : 0
         ];
     }
@@ -302,8 +296,8 @@ class CommissionController extends Controller
 
         return [
             'total_earned' => $commissions->sum('commission_amount'),
-            'total_paid' => $commissions->where('status', 'paid')->sum('commission_amount'),
-            'total_pending' => $commissions->whereIn('status', ['pending', 'calculated'])->sum('commission_amount'),
+            'total_active' => $commissions->whereIn('status', ['pending', 'calculated'])->sum('commission_amount'),
+            'total_cancelled' => $commissions->where('status', 'cancelled')->sum('commission_amount'),
             'commission_count' => $commissions->count(),
             'by_type' => $byType->map(function($items) {
                 return [
@@ -374,6 +368,95 @@ class CommissionController extends Controller
                 return [now()->subYear()->startOfYear(), now()->subYear()->endOfYear()];
             default:
                 return [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()];
+        }
+    }
+
+
+    /**
+     * 커미션 취소 처리
+     */
+    public function cancel(Request $request, $id)
+    {
+        $request->validate([
+            'reason' => 'required|string|max:500'
+        ]);
+
+        try {
+            $commission = PartnerCommission::findOrFail($id);
+
+            if ($commission->status === 'cancelled') {
+                return response()->json([
+                    'success' => false,
+                    'message' => '이미 취소된 커미션입니다.'
+                ], 400);
+            }
+
+            $commission->update([
+                'status' => 'cancelled',
+                'cancelled_at' => now(),
+                'cancellation_reason' => $request->reason,
+                'notes' => ($commission->notes ?? '') . "\n취소됨: " . $request->reason . " (" . now()->format('Y-m-d H:i') . ")"
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => '커미션이 취소되었습니다.'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '취소 처리 중 오류가 발생했습니다: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 커미션 정보 수정
+     */
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'commission_amount' => 'required|numeric|min:0',
+            'tax_amount' => 'required|numeric|min:0',
+            'notes' => 'nullable|string|max:1000'
+        ]);
+
+        try {
+            $commission = PartnerCommission::findOrFail($id);
+
+            if ($commission->status === 'cancelled') {
+                return response()->json([
+                    'success' => false,
+                    'message' => '취소된 커미션은 수정할 수 없습니다.'
+                ], 400);
+            }
+
+            $netAmount = $request->commission_amount - $request->tax_amount;
+
+            $commission->update([
+                'commission_amount' => $request->commission_amount,
+                'tax_amount' => $request->tax_amount,
+                'net_amount' => $netAmount,
+                'notes' => $request->notes,
+                'updated_at' => now()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => '커미션 정보가 수정되었습니다.',
+                'data' => [
+                    'commission_amount' => $commission->commission_amount,
+                    'tax_amount' => $commission->tax_amount,
+                    'net_amount' => $commission->net_amount
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '수정 처리 중 오류가 발생했습니다: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

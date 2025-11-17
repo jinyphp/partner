@@ -171,7 +171,8 @@ class IndexController extends PartnerController
                 'email' => $user->email ?? '',
                 'phone' => $user->profile->phone ?? '',
                 'uuid' => $user->uuid
-            ]
+            ],
+            'partnerCode' => $partner->partner_code // 파트너 코드 추가
         ]);
     }
 

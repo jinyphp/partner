@@ -51,14 +51,24 @@ class PartnerUser extends Model
         'tree_path',
         'children_count',
         'total_children_count',
+
+        // 개인별 수수료 설정
+        'individual_commission_type',
+        'individual_commission_rate',
+        'individual_commission_amount',
+        'commission_notes',
+
+        // 네트워크 관리
         'max_children',
-        'personal_commission_rate',
-        'management_bonus_rate',
         'discount_rate',
+
+        // 실적 관리
         'monthly_sales',
         'total_sales',
         'team_sales',
         'earned_commissions',
+
+        // 상태 관리
         'can_recruit',
         'last_activity_at',
         'network_settings'
@@ -85,8 +95,12 @@ class PartnerUser extends Model
         'children_count' => 'integer',
         'total_children_count' => 'integer',
         'max_children' => 'integer',
-        'personal_commission_rate' => 'decimal:2',
-        'management_bonus_rate' => 'decimal:2',
+
+        // 개인별 수수료 설정 캐스팅
+        'individual_commission_rate' => 'decimal:2',
+        'individual_commission_amount' => 'decimal:2',
+
+        // 네트워크 및 실적 관리 캐스팅
         'discount_rate' => 'decimal:2',
         'monthly_sales' => 'decimal:2',
         'total_sales' => 'decimal:2',
@@ -252,6 +266,32 @@ class PartnerUser extends Model
     public function generatedCommissions()
     {
         return $this->hasMany(PartnerCommission::class, 'source_partner_id');
+    }
+
+    /**
+     * 동적 목표 관계
+     */
+    public function dynamicTargets()
+    {
+        return $this->hasMany(PartnerDynamicTarget::class, 'partner_user_id');
+    }
+
+    /**
+     * 현재 활성 목표
+     */
+    public function activeTargets()
+    {
+        return $this->hasMany(PartnerDynamicTarget::class, 'partner_user_id')
+            ->where('status', 'active');
+    }
+
+    /**
+     * 완료된 목표들
+     */
+    public function completedTargets()
+    {
+        return $this->hasMany(PartnerDynamicTarget::class, 'partner_user_id')
+            ->where('status', 'completed');
     }
 
     /**
@@ -610,20 +650,124 @@ class PartnerUser extends Model
     }
 
     /**
-     * 레벨별 커미션율 조회
+     * 개별 파트너의 총 수수료율 계산 (type + tier + individual)
+     */
+    public function getTotalCommissionRate()
+    {
+        $typeRate = $this->partnerType ? $this->partnerType->default_commission_rate : 0;
+        $tierRate = $this->partnerTier ? $this->partnerTier->commission_rate : 0;
+        $individualRate = $this->individual_commission_type === 'percentage'
+            ? $this->individual_commission_rate
+            : 0;
+
+        return $typeRate + $tierRate + $individualRate;
+    }
+
+    /**
+     * 개별 파트너의 총 수수료 금액 계산 (type + tier + individual)
+     */
+    public function getTotalCommissionAmount($baseAmount = 100000)
+    {
+        $typeAmount = $this->partnerType ? $this->partnerType->default_commission_amount : 0;
+        $tierAmount = $this->partnerTier ? $this->partnerTier->commission_amount : 0;
+        $individualAmount = $this->individual_commission_type === 'fixed_amount'
+            ? $this->individual_commission_amount
+            : 0;
+
+        // 퍼센트 기반 수수료 계산
+        $percentageCommission = ($baseAmount * $this->getTotalCommissionRate()) / 100;
+
+        return $typeAmount + $tierAmount + $individualAmount + $percentageCommission;
+    }
+
+    /**
+     * 수수료 구성 요소 상세 조회
+     */
+    public function getCommissionBreakdown($baseAmount = 100000)
+    {
+        $breakdown = [
+            'partner_type' => [
+                'rate' => $this->partnerType ? $this->partnerType->default_commission_rate : 0,
+                'amount' => $this->partnerType ? $this->partnerType->default_commission_amount : 0,
+                'calculated_amount' => 0
+            ],
+            'partner_tier' => [
+                'rate' => $this->partnerTier ? $this->partnerTier->commission_rate : 0,
+                'amount' => $this->partnerTier ? $this->partnerTier->commission_amount : 0,
+                'calculated_amount' => 0
+            ],
+            'individual' => [
+                'type' => $this->individual_commission_type,
+                'rate' => $this->individual_commission_type === 'percentage' ? $this->individual_commission_rate : 0,
+                'amount' => $this->individual_commission_type === 'fixed_amount' ? $this->individual_commission_amount : 0,
+                'calculated_amount' => 0
+            ],
+            'total' => [
+                'total_rate' => 0,
+                'total_fixed_amount' => 0,
+                'total_commission' => 0
+            ]
+        ];
+
+        // 각 구성요소별 계산된 금액 산출
+        if ($breakdown['partner_type']['rate'] > 0) {
+            $breakdown['partner_type']['calculated_amount'] = ($baseAmount * $breakdown['partner_type']['rate']) / 100;
+        }
+        if ($breakdown['partner_tier']['rate'] > 0) {
+            $breakdown['partner_tier']['calculated_amount'] = ($baseAmount * $breakdown['partner_tier']['rate']) / 100;
+        }
+        if ($breakdown['individual']['rate'] > 0) {
+            $breakdown['individual']['calculated_amount'] = ($baseAmount * $breakdown['individual']['rate']) / 100;
+        }
+
+        // 총계 계산
+        $breakdown['total']['total_rate'] = $breakdown['partner_type']['rate'] + $breakdown['partner_tier']['rate'] + $breakdown['individual']['rate'];
+        $breakdown['total']['total_fixed_amount'] = $breakdown['partner_type']['amount'] + $breakdown['partner_tier']['amount'] + $breakdown['individual']['amount'];
+        $breakdown['total']['total_commission'] = $breakdown['partner_type']['calculated_amount'] +
+                                                 $breakdown['partner_tier']['calculated_amount'] +
+                                                 $breakdown['individual']['calculated_amount'] +
+                                                 $breakdown['total']['total_fixed_amount'];
+
+        return $breakdown;
+    }
+
+    /**
+     * 개별 수수료 설정 업데이트
+     */
+    public function updateIndividualCommission($type, $value, $notes = null, $adminId = null)
+    {
+        $this->individual_commission_type = $type;
+
+        if ($type === 'percentage') {
+            $this->individual_commission_rate = $value;
+            $this->individual_commission_amount = 0;
+        } else {
+            $this->individual_commission_amount = $value;
+            $this->individual_commission_rate = 0;
+        }
+
+        $this->commission_notes = $notes;
+        $this->updated_by = $adminId;
+        $this->save();
+    }
+
+    /**
+     * 레벨별 커미션율 조회 (기존 로직 유지하되 새로운 구조 반영)
      */
     protected function getCommissionRateForLevel($childLevel)
     {
         $levelDifference = $childLevel - $this->level;
 
-        // 직접 하위 파트너인 경우
+        // 직접 하위 파트너인 경우 - 총 수수료율 사용
         if ($levelDifference === 1) {
-            return $this->personal_commission_rate;
+            return $this->getTotalCommissionRate();
         }
 
-        // 관리 보너스
+        // 관리 보너스 - 개별 수수료만 적용
         if ($levelDifference <= ($this->partnerTier->max_depth ?? 3)) {
-            return $this->management_bonus_rate;
+            return $this->individual_commission_type === 'percentage'
+                ? $this->individual_commission_rate
+                : 0;
         }
 
         return 0;
@@ -682,5 +826,240 @@ class PartnerUser extends Model
     {
         return $query->where('tree_path', 'like', '%/' . $partnerId . '/%')
             ->orWhere('tree_path', 'like', '%/' . $partnerId);
+    }
+
+    // ====================================================================
+    // 실시간 통계 계산 메서드들 (Real-time Statistics Calculation Methods)
+    // ====================================================================
+
+    /**
+     * 총 매출액 계산 (실시간)
+     * partner_sales 테이블에서 실시간 집계
+     */
+    public function getTotalSalesAmount()
+    {
+        return $this->sales()
+            ->where('status', 'confirmed')
+            ->sum('amount') ?? 0;
+    }
+
+    /**
+     * 총 커미션 계산 (실시간)
+     * partner_commissions 테이블에서 실시간 집계
+     */
+    public function getTotalCommissionsEarned()
+    {
+        return $this->commissions()
+            ->where('status', '!=', 'cancelled')
+            ->sum('commission_amount') ?? 0;
+    }
+
+    /**
+     * 지급된 커미션 계산
+     */
+    public function getPaidCommissions()
+    {
+        return $this->commissions()
+            ->where('status', 'paid')
+            ->sum('commission_amount') ?? 0;
+    }
+
+    /**
+     * 미지급 커미션 계산
+     */
+    public function getUnpaidCommissions()
+    {
+        return $this->commissions()
+            ->whereIn('status', ['calculated', 'pending'])
+            ->sum('commission_amount') ?? 0;
+    }
+
+    /**
+     * 커미션 잔액 (Balance) 계산
+     * 지급 예정 커미션 - 지급된 커미션
+     */
+    public function getCommissionBalance()
+    {
+        $totalEarned = $this->getTotalCommissionsEarned();
+        $totalPaid = $this->getPaidCommissions();
+
+        return $totalEarned - $totalPaid;
+    }
+
+    /**
+     * 팀 총 매출액 계산 (자신 + 모든 하위 파트너)
+     */
+    public function getTeamTotalSales()
+    {
+        $ownSales = $this->getTotalSalesAmount();
+
+        // 하위 파트너들의 매출 합계
+        $teamSales = static::descendantsOf($this->id)
+            ->get()
+            ->sum(function($partner) {
+                return $partner->getTotalSalesAmount();
+            });
+
+        return $ownSales + $teamSales;
+    }
+
+    /**
+     * 월별 매출 통계 (최근 12개월)
+     */
+    public function getMonthlyStats($months = 12)
+    {
+        $stats = [];
+
+        for ($i = 0; $i < $months; $i++) {
+            $startOfMonth = now()->subMonths($i)->startOfMonth();
+            $endOfMonth = now()->subMonths($i)->endOfMonth();
+
+            $monthSales = $this->sales()
+                ->where('status', 'confirmed')
+                ->whereBetween('sales_date', [$startOfMonth, $endOfMonth])
+                ->sum('amount') ?? 0;
+
+            $monthCommissions = $this->commissions()
+                ->where('status', '!=', 'cancelled')
+                ->whereBetween('earned_at', [$startOfMonth, $endOfMonth])
+                ->sum('commission_amount') ?? 0;
+
+            $stats[] = [
+                'month' => $startOfMonth->format('Y-m'),
+                'month_name' => $startOfMonth->format('Y년 n월'),
+                'sales_amount' => $monthSales,
+                'commission_amount' => $monthCommissions,
+                'commission_rate' => $monthSales > 0 ? round(($monthCommissions / $monthSales) * 100, 2) : 0
+            ];
+        }
+
+        return array_reverse($stats); // 오래된 순서부터
+    }
+
+    /**
+     * 이번 달 성과
+     */
+    public function getThisMonthStats()
+    {
+        $startOfMonth = now()->startOfMonth();
+        $endOfMonth = now()->endOfMonth();
+
+        return [
+            'sales_amount' => $this->sales()
+                ->where('status', 'confirmed')
+                ->whereBetween('sales_date', [$startOfMonth, $endOfMonth])
+                ->sum('amount') ?? 0,
+
+            'commission_amount' => $this->commissions()
+                ->where('status', '!=', 'cancelled')
+                ->whereBetween('earned_at', [$startOfMonth, $endOfMonth])
+                ->sum('commission_amount') ?? 0,
+
+            'sales_count' => $this->sales()
+                ->where('status', 'confirmed')
+                ->whereBetween('sales_date', [$startOfMonth, $endOfMonth])
+                ->count(),
+
+            'commission_count' => $this->commissions()
+                ->where('status', '!=', 'cancelled')
+                ->whereBetween('earned_at', [$startOfMonth, $endOfMonth])
+                ->count()
+        ];
+    }
+
+    /**
+     * 전체 성과 요약 (실시간 계산)
+     */
+    public function getPerformanceSummary()
+    {
+        return [
+            // 매출 정보
+            'total_sales' => $this->getTotalSalesAmount(),
+            'team_total_sales' => $this->getTeamTotalSales(),
+            'sales_count' => $this->sales()->where('status', 'confirmed')->count(),
+
+            // 커미션 정보
+            'total_commissions' => $this->getTotalCommissionsEarned(),
+            'paid_commissions' => $this->getPaidCommissions(),
+            'unpaid_commissions' => $this->getUnpaidCommissions(),
+            'commission_balance' => $this->getCommissionBalance(),
+
+            // 비율 계산
+            'commission_rate' => $this->getTotalSalesAmount() > 0
+                ? round(($this->getTotalCommissionsEarned() / $this->getTotalSalesAmount()) * 100, 2)
+                : 0,
+
+            // 이번 달 성과
+            'this_month' => $this->getThisMonthStats(),
+
+            // 네트워크 정보
+            'direct_children' => $this->children_count ?? 0,
+            'total_network_size' => $this->getAllDescendantsCountAttribute(),
+
+            // 기간 정보
+            'calculated_at' => now()->toISOString()
+        ];
+    }
+
+    /**
+     * 매출 관계 (PartnerSales와의 연결)
+     */
+    public function sales()
+    {
+        return $this->hasMany(\Jiny\Partner\Models\PartnerSales::class, 'partner_id');
+    }
+
+    // ====================================================================
+    // 캐시된 통계 업데이트 메서드들 (Cached Statistics Update Methods)
+    // ====================================================================
+
+    /**
+     * 캐시된 통계 데이터 업데이트
+     * 성능을 위해 주기적으로 실행하여 데이터베이스 필드에 저장
+     */
+    public function updateCachedStatistics()
+    {
+        $stats = $this->getPerformanceSummary();
+
+        $this->update([
+            'monthly_sales' => $stats['total_sales'], // 총 매출액으로 업데이트
+            'earned_commissions' => $stats['total_commissions'],
+            'team_sales' => $stats['team_total_sales'],
+            'statistics_updated_at' => now()
+        ]);
+
+        return $stats;
+    }
+
+    /**
+     * 통계 데이터가 최신인지 확인
+     */
+    public function hasRecentStatistics($cacheMinutes = 60)
+    {
+        if (!$this->statistics_updated_at) {
+            return false;
+        }
+
+        return $this->statistics_updated_at->diffInMinutes(now()) < $cacheMinutes;
+    }
+
+    /**
+     * 실시간 또는 캐시된 통계 반환
+     * 최근에 업데이트된 경우 캐시된 값 사용, 그렇지 않으면 실시간 계산
+     */
+    public function getStatistics($useCache = true, $cacheMinutes = 60)
+    {
+        if ($useCache && $this->hasRecentStatistics($cacheMinutes)) {
+            return [
+                'total_sales' => $this->monthly_sales ?? 0,
+                'total_commissions' => $this->earned_commissions ?? 0,
+                'team_sales' => $this->team_sales ?? 0,
+                'commission_balance' => $this->getCommissionBalance(), // 항상 실시간
+                'cached' => true,
+                'updated_at' => $this->statistics_updated_at
+            ];
+        }
+
+        return array_merge($this->getPerformanceSummary(), ['cached' => false]);
     }
 }

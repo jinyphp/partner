@@ -18,7 +18,19 @@
                     </nav>
                 </div>
                 <div>
-                    <a href="{{ route('admin.' . $routePrefix . '.edit', $sales->id) }}" class="btn btn-primary">
+                    @if($sales->status === 'pending' && $sales->is_approved)
+                        <button type="button" class="btn btn-success mr-2" onclick="confirmSales()">
+                            <i class="fas fa-check"></i> 매출 확정
+                        </button>
+                    @endif
+
+                    @if($sales->status !== 'cancelled')
+                        <button type="button" class="btn btn-warning mr-2" onclick="cancelSales()">
+                            <i class="fas fa-ban"></i> 매출 취소
+                        </button>
+                    @endif
+
+                    <a href="{{ route('admin.' . $routePrefix . '.edit', $sales->id) }}" class="btn btn-primary mr-2">
                         <i class="fas fa-edit"></i> 수정
                     </a>
                     <a href="{{ route('admin.' . $routePrefix . '.index') }}" class="btn btn-secondary">
@@ -107,13 +119,13 @@
                                     @endswitch
                                 </div>
                                 <div class="status-text">
-                                    <h5 class="mb-3">현재 상태</h5>
+                                    <h5 class="mb-3 text-dark">현재 상태</h5>
                                     @switch($sales->status)
                                         @case('pending')
                                             <div class="badge badge-warning badge-lg mb-2">
                                                 {{ $sales->is_approved ? '승인완료 (확정대기)' : '승인대기' }}
                                             </div>
-                                            <div class="small text-muted">
+                                            <div class="small text-dark">
                                                 {{ $sales->is_approved ? '관리자 확정을 기다리고 있습니다' : '관리자 승인을 기다리고 있습니다' }}
                                             </div>
                                             @break
@@ -134,20 +146,20 @@
                                             @break
                                         @case('cancelled')
                                             <div class="badge badge-danger badge-lg mb-2">취소됨</div>
-                                            <div class="small text-muted">
+                                            <div class="small text-dark">
                                                 매출이 취소되었습니다
                                                 @if($sales->status_reason)
-                                                    <br><small>"{{ $sales->status_reason }}"</small>
+                                                    <br><small class="text-dark">"{{ $sales->status_reason }}"</small>
                                                 @endif
                                             </div>
                                             @break
                                         @case('refunded')
                                             <div class="badge badge-secondary badge-lg mb-2">환불됨</div>
-                                            <div class="small text-muted">매출이 환불되었습니다</div>
+                                            <div class="small text-dark">매출이 환불되었습니다</div>
                                             @break
                                         @default
                                             <div class="badge badge-secondary badge-lg mb-2">알 수 없음</div>
-                                            <div class="small text-muted">상태: {{ $sales->status }}</div>
+                                            <div class="small text-dark">상태: {{ $sales->status }}</div>
                                     @endswitch
                                 </div>
                             </div>
@@ -383,9 +395,9 @@
                                             </td>
                                             <td>
                                                 @if($commission->level_difference > 0)
-                                                    {{ $commission->level_difference }}단계 상위
+                                                    <span class="text-dark">{{ $commission->level_difference }}단계 상위</span>
                                                 @else
-                                                    매출 파트너
+                                                    <span class="text-dark">매출 파트너</span>
                                                 @endif
                                             </td>
                                             <td>{{ number_format($commission->commission_rate, 2) }}%</td>
@@ -486,31 +498,11 @@
                         </button>
                     @endif
 
-                    @if($sales->status === 'pending' && $sales->is_approved)
-                        <button type="button" class="btn btn-success btn-sm btn-block mb-2" onclick="confirmSales()">
-                            <i class="fas fa-check"></i> 매출 확정
-                        </button>
-                    @endif
-
                     @if($sales->status === 'confirmed' && !$sales->commission_calculated)
                         <button type="button" class="btn btn-primary btn-sm btn-block mb-2" onclick="calculateCommission()">
                             <i class="fas fa-calculator"></i> 커미션 계산
                         </button>
                     @endif
-
-                    @if($sales->status !== 'cancelled')
-                        <button type="button" class="btn btn-warning btn-sm btn-block mb-2" onclick="cancelSales()">
-                            <i class="fas fa-ban"></i> 매출 취소
-                        </button>
-                    @endif
-
-                    <a href="{{ route('admin.' . $routePrefix . '.edit', $sales->id) }}" class="btn btn-outline-primary btn-sm btn-block mb-2">
-                        <i class="fas fa-edit"></i> 수정
-                    </a>
-
-                    <button type="button" class="btn btn-outline-danger btn-sm btn-block" onclick="deleteSales()">
-                        <i class="fas fa-trash"></i> 삭제
-                    </button>
                 </div>
             </div>
 
@@ -555,7 +547,7 @@
 
             <!-- 메모 -->
             @if($sales->admin_notes)
-                <div class="card shadow">
+                <div class="card shadow mb-4">
                     <div class="card-header py-3">
                         <h6 class="m-0 font-weight-bold text-primary">관리자 메모</h6>
                     </div>
@@ -564,6 +556,19 @@
                     </div>
                 </div>
             @endif
+
+            <!-- 매출 관리 -->
+            <div class="mb-3">
+                <h6 class="font-weight-bold text-primary mb-3">매출 관리</h6>
+                <div>
+                    <a href="{{ route('admin.' . $routePrefix . '.edit', $sales->id) }}" class="btn btn-primary mr-2">
+                        <i class="fas fa-edit"></i> 수정
+                    </a>
+                    <button type="button" class="btn btn-danger" onclick="deleteSales()">
+                        <i class="fas fa-trash"></i> 삭제
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -666,28 +671,44 @@ function calculateCommission() {
         button.setAttribute('data-original-text', originalText);
         setButtonLoading(button, true);
 
-        fetch('{{ route("admin." . $routePrefix . ".commission.calculate", $sales->id) }}', {
+        // 새로운 API 엔드포인트 사용
+        fetch('{{ route("api.admin.partner.v1.commissions.calculate", $sales->id) }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                force_recalculate: false
+            })
         })
         .then(response => response.json())
         .then(data => {
             setButtonLoading(button, false);
             if (data.success) {
-                showToast(data.message, 'success');
-                location.reload(); // Refresh to show commission data
+                // 성공 시 상세 정보와 함께 알림
+                const summary = data.data;
+                let message = `커미션 계산이 완료되었습니다!\n\n`;
+                message += `• 총 커미션: ${summary.total_commission.toLocaleString()}원\n`;
+                message += `• 수령자: ${summary.recipients_count}명\n`;
+                message += `• 매출 금액: ${summary.sales_amount.toLocaleString()}원`;
+
+                showToast(message, 'success');
+
+                // 페이지 새로고침으로 결과 표시
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
             } else {
                 showToast(data.message, 'error');
             }
         })
         .catch(error => {
             setButtonLoading(button, false);
-            console.error('Error:', error);
-            showToast('커미션 계산 중 오류가 발생했습니다.', 'error');
+            console.error('Commission calculation error:', error);
+            showToast('커미션 계산 중 네트워크 오류가 발생했습니다.', 'error');
         });
     }
 }
@@ -773,6 +794,67 @@ function loadStatusHistory() {
 
 @push('styles')
 <style>
+/* 기본 글자색을 검은색으로 설정 */
+.container-fluid {
+    color: #333333;
+}
+
+.card-body {
+    color: #333333;
+}
+
+.step-content, .status-text, .card-body h5, .card-body h6, .card-body p, .card-body div {
+    color: #333333 !important;
+}
+
+/* 라벨과 제목 글자색 강제 설정 */
+label, .font-weight-bold, .form-label {
+    color: #333333 !important;
+}
+
+/* 브레드크럼과 제목 */
+.breadcrumb, .h3 {
+    color: #333333;
+}
+
+/* text-muted 클래스를 가독성 있는 색상으로 변경 */
+.text-muted {
+    color: #666666 !important;
+}
+
+/* small 텍스트 색상 */
+.small {
+    color: #666666 !important;
+}
+
+/* 테이블 텍스트 색상 강제 설정 */
+.table td, .table th {
+    color: #333333 !important;
+}
+
+.table tbody td {
+    color: #333333 !important;
+}
+
+/* 테이블 내 배지 텍스트 색상은 유지 */
+.table .badge {
+    color: white !important;
+}
+
+/* 커미션 테이블 전용 스타일 */
+.table-responsive .table {
+    color: #333333 !important;
+}
+
+.table-responsive .table * {
+    color: inherit !important;
+}
+
+/* 배지는 예외 */
+.table-responsive .table .badge {
+    color: white !important;
+}
+
 .timeline-item {
     position: relative;
 }
@@ -874,11 +956,12 @@ function loadStatusHistory() {
 }
 
 .step-item.pending .step-title {
-    color: #858796;
+    color: #333333;
 }
 
 .step-item.current .step-title {
-    color: #856404;
+    color: #333333;
+    font-weight: 600;
 }
 
 .step-item.completed .step-title {
@@ -887,11 +970,11 @@ function loadStatusHistory() {
 
 .step-time {
     font-size: 0.875rem;
-    color: #6e707e;
+    color: #666666;
 }
 
 .step-item.current .step-time {
-    color: #856404;
+    color: #333333;
     font-weight: 500;
 }
 
@@ -902,9 +985,14 @@ function loadStatusHistory() {
 /* Current Status Section */
 .current-status {
     padding: 20px;
-    background: linear-gradient(135deg, #f8f9fc 0%, #eaecf4 100%);
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fc 100%);
     border-radius: 10px;
     border: 1px solid #e3e6f0;
+    color: #333333 !important;
+}
+
+.current-status * {
+    color: inherit !important;
 }
 
 .status-icon {

@@ -25,16 +25,9 @@ class CreateController extends Controller
      */
     public function __invoke()
     {
-        // 상위 등급으로 선택 가능한 등급들 조회
-        $availableParentTiers = $this->model::active()
-            ->orderBy('priority_level')
-            ->orderBy('display_order')
-            ->get();
-
         return view("{$this->viewPath}.create", [
             'title' => $this->title,
-            'routePrefix' => $this->routePrefix,
-            'availableParentTiers' => $availableParentTiers
+            'routePrefix' => $this->routePrefix
         ]);
     }
 

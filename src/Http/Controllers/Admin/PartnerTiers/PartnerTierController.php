@@ -31,8 +31,32 @@ class PartnerTierController extends BaseAdminController
             'description' => 'nullable|string',
             'commission_rate' => 'required|numeric|min:0|max:100',
             'priority_level' => 'required|integer|min:1',
+
+            // 새로운 승수 시스템 필드
+            'sales_target_multiplier' => 'required|numeric|min:0.1|max:10',
+            'cases_target_multiplier' => 'required|numeric|min:0.1|max:10',
+            'quality_expectation_multiplier' => 'required|numeric|min:0.1|max:5',
+            'client_target_multiplier' => 'required|numeric|min:0.1|max:10',
+
+            // 성과 기준
+            'min_achievement_rate' => 'required|numeric|min:0|max:200',
+            'consecutive_months_required' => 'required|integer|min:1|max:12',
+
+            // 등급 관리
+            'max_team_size' => 'nullable|integer|min:0|max:100',
+            'team_performance_weight' => 'nullable|numeric|min:0|max:1',
+
+            // 자동 조정 설정
+            'auto_demotion_enabled' => 'boolean',
+            'demotion_grace_months' => 'nullable|integer|min:1|max:12',
+
+            // JSON 필드
             'requirements' => 'nullable|json',
             'benefits' => 'nullable|json',
+            'tier_benefits' => 'nullable|json',
+            'advancement_criteria' => 'nullable|json',
+
+            // 기존 필드
             'is_active' => 'boolean',
             'sort_order' => 'nullable|integer',
             'min_completed_jobs' => 'nullable|integer|min:0',

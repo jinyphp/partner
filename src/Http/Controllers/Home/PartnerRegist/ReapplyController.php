@@ -39,7 +39,7 @@ class ReapplyController extends PartnerController
             ->first();
 
         if ($existingReapplication) {
-            return redirect()->route('home.partner.regist.status', $existingReapplication->id)
+            return redirect()->route('home.partner.regist.status')
                 ->with('info', '이미 재신청을 진행하셨습니다.');
         }
 

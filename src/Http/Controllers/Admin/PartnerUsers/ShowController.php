@@ -4,6 +4,7 @@ namespace Jiny\Partner\Http\Controllers\Admin\PartnerUsers;
 
 use App\Http\Controllers\Controller;
 use Jiny\Partner\Models\PartnerUser;
+use Jiny\Partner\Models\PartnerDynamicTarget;
 
 class ShowController extends Controller
 {
@@ -25,7 +26,7 @@ class ShowController extends Controller
      */
     public function __invoke($id)
     {
-        $item = $this->model::with(['partnerTier', 'creator', 'updater', 'parent', 'children'])->findOrFail($id);
+        $item = $this->model::with(['partnerTier', 'partnerType', 'creator', 'updater', 'parent', 'children'])->findOrFail($id);
 
         // 샤딩된 테이블에서 사용자 정보 조회
         $shardedUserInfo = $item->getUserFromShardedTable();
@@ -36,13 +37,29 @@ class ShowController extends Controller
         // 등급 승급 가능성 체크
         $upgradeAnalysis = $this->getUpgradeAnalysis($item);
 
+        // 동적 목표 데이터 조회
+        $dynamicTargets = $this->getDynamicTargets($item);
+
+        // 현재 활성 목표
+        $activeTarget = $this->getActiveTarget($item);
+
+        // 목표 추이 분석
+        $targetTrendAnalysis = $this->getTargetTrendAnalysis($item);
+
+        // 다음 목표 추천
+        $recommendedNextTarget = $this->getRecommendedNextTarget($item);
+
         return view("{$this->viewPath}.show", [
             'item' => $item,
             'title' => $this->title,
             'routePrefix' => $this->routePrefix,
             'shardedUserInfo' => $shardedUserInfo,
             'performanceAnalysis' => $performanceAnalysis,
-            'upgradeAnalysis' => $upgradeAnalysis
+            'upgradeAnalysis' => $upgradeAnalysis,
+            'dynamicTargets' => $dynamicTargets,
+            'activeTarget' => $activeTarget,
+            'targetTrendAnalysis' => $targetTrendAnalysis,
+            'recommendedNextTarget' => $recommendedNextTarget
         ]);
     }
 
@@ -183,6 +200,143 @@ class ShowController extends Controller
         }
 
         return round($item->total_completed_jobs / $monthsSinceJoined, 1);
+    }
+
+    /**
+     * 동적 목표 데이터 조회
+     */
+    protected function getDynamicTargets($item): array
+    {
+        $currentYear = date('Y');
+        $currentMonth = date('n');
+        $currentQuarter = ceil($currentMonth / 3);
+
+        // 최근 6개월간의 목표 데이터
+        $recentTargets = PartnerDynamicTarget::where('partner_user_id', $item->id)
+            ->where('target_year', '>=', $currentYear - 1)
+            ->orderByDesc('target_year')
+            ->orderByDesc('target_month')
+            ->orderByDesc('target_quarter')
+            ->with('createdBy', 'approvedBy')
+            ->limit(10)
+            ->get();
+
+        return [
+            'recent_targets' => $recentTargets,
+            'current_month_target' => PartnerDynamicTarget::where('partner_user_id', $item->id)
+                ->where('target_period_type', 'monthly')
+                ->where('target_year', $currentYear)
+                ->where('target_month', $currentMonth)
+                ->first(),
+            'current_quarter_target' => PartnerDynamicTarget::where('partner_user_id', $item->id)
+                ->where('target_period_type', 'quarterly')
+                ->where('target_year', $currentYear)
+                ->where('target_quarter', $currentQuarter)
+                ->first(),
+            'current_year_target' => PartnerDynamicTarget::where('partner_user_id', $item->id)
+                ->where('target_period_type', 'yearly')
+                ->where('target_year', $currentYear)
+                ->first()
+        ];
+    }
+
+    /**
+     * 현재 활성 목표 조회
+     */
+    protected function getActiveTarget($item)
+    {
+        return PartnerDynamicTarget::where('partner_user_id', $item->id)
+            ->where('status', 'active')
+            ->orderByDesc('created_at')
+            ->first();
+    }
+
+    /**
+     * 목표 달성 추이 분석
+     */
+    protected function getTargetTrendAnalysis($item): array
+    {
+        $targets = PartnerDynamicTarget::where('partner_user_id', $item->id)
+            ->whereIn('status', ['completed', 'active'])
+            ->where('target_period_type', 'monthly')
+            ->where('target_year', '>=', date('Y') - 1)
+            ->orderBy('target_year')
+            ->orderBy('target_month')
+            ->get();
+
+        $trendData = [];
+        foreach ($targets as $target) {
+            $trendData[] = [
+                'period' => $target->period_display,
+                'sales_achievement_rate' => $target->sales_achievement_rate,
+                'overall_achievement_rate' => $target->overall_achievement_rate,
+                'final_sales_target' => $target->final_sales_target,
+                'current_sales_achievement' => $target->current_sales_achievement,
+                'calculated_bonus_amount' => $target->calculated_bonus_amount
+            ];
+        }
+
+        return [
+            'trend_data' => $trendData,
+            'avg_achievement_rate' => $targets->avg('overall_achievement_rate'),
+            'best_month' => $targets->sortByDesc('overall_achievement_rate')->first(),
+            'total_bonus_earned' => $targets->sum('calculated_bonus_amount')
+        ];
+    }
+
+    /**
+     * 다음 목표 추천 계산
+     */
+    protected function getRecommendedNextTarget($item): array
+    {
+        $type = $item->partnerType;
+        $tier = $item->partnerTier;
+
+        if (!$type || !$tier) {
+            return [];
+        }
+
+        // 최근 성과 기반으로 조정 계수 추천
+        $recentTargets = PartnerDynamicTarget::where('partner_user_id', $item->id)
+            ->whereIn('status', ['completed', 'active'])
+            ->orderByDesc('created_at')
+            ->limit(3)
+            ->get();
+
+        $avgAchievement = $recentTargets->avg('overall_achievement_rate');
+
+        // 성과에 따른 조정 계수 추천
+        $recommendedFactor = 1.0;
+        if ($avgAchievement > 120) {
+            $recommendedFactor = 1.2; // 성과가 좋으면 목표 증가
+        } elseif ($avgAchievement < 80) {
+            $recommendedFactor = 0.9; // 성과가 낮으면 목표 감소
+        }
+
+        $baseSalesTarget = $type->min_baseline_sales * $tier->sales_target_multiplier;
+        $baseCasesTarget = $type->min_baseline_cases * $tier->cases_target_multiplier;
+
+        return [
+            'recommended_adjustment_factor' => $recommendedFactor,
+            'recommended_sales_target' => $baseSalesTarget * $recommendedFactor,
+            'recommended_cases_target' => $baseCasesTarget * $recommendedFactor,
+            'reasoning' => $this->getRecommendationReasoning($avgAchievement, $recommendedFactor),
+            'recent_avg_achievement' => round($avgAchievement, 1)
+        ];
+    }
+
+    /**
+     * 추천 이유 텍스트 생성
+     */
+    protected function getRecommendationReasoning($avgAchievement, $factor): string
+    {
+        if ($avgAchievement > 120) {
+            return "최근 3개월 평균 달성률이 {$avgAchievement}%로 우수하여 목표를 {$factor}배 상향 조정을 추천합니다.";
+        } elseif ($avgAchievement < 80) {
+            return "최근 3개월 평균 달성률이 {$avgAchievement}%로 개선이 필요하여 목표를 {$factor}배 하향 조정을 추천합니다.";
+        } else {
+            return "최근 3개월 평균 달성률이 {$avgAchievement}%로 안정적이므로 현재 수준 유지를 추천합니다.";
+        }
     }
 
     protected function getValidationRules($item = null): array

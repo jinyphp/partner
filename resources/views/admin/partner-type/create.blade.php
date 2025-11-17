@@ -5,7 +5,7 @@
 @section('content')
 <div class="container-fluid">
     <!-- 헤더 -->
-    <div class="row mb-4">
+    <section class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -26,7 +26,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <form action="{{ route('admin.' . $routePrefix . '.store') }}" method="POST">
         @csrf
@@ -183,17 +183,6 @@
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="certifications" class="form-label">관련 자격증</label>
-                            <textarea class="form-control @error('certifications') is-invalid @enderror"
-                                      id="certifications"
-                                      name="certifications"
-                                      rows="2"
-                                      placeholder="쉼표로 구분하여 입력 (예: 정보처리기사, AWS 자격증)">{{ old('certifications') }}</textarea>
-                            @error('certifications')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
                     </div>
                 </div>
 
@@ -208,29 +197,61 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="target_sales_amount" class="form-label">목표 매출액 (원)</label>
+                                    <label for="min_baseline_sales" class="form-label">최소 기준 매출액 (원)</label>
                                     <input type="number"
-                                           class="form-control @error('target_sales_amount') is-invalid @enderror"
-                                           id="target_sales_amount"
-                                           name="target_sales_amount"
-                                           value="{{ old('target_sales_amount', 0) }}"
+                                           class="form-control @error('min_baseline_sales') is-invalid @enderror"
+                                           id="min_baseline_sales"
+                                           name="min_baseline_sales"
+                                           value="{{ old('min_baseline_sales', 0) }}"
                                            min="0"
                                            step="10000">
-                                    @error('target_sales_amount')
+                                    @error('min_baseline_sales')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="target_support_cases" class="form-label">목표 지원 건수</label>
+                                    <label for="min_baseline_cases" class="form-label">최소 기준 지원 건수</label>
                                     <input type="number"
-                                           class="form-control @error('target_support_cases') is-invalid @enderror"
-                                           id="target_support_cases"
-                                           name="target_support_cases"
-                                           value="{{ old('target_support_cases', 0) }}"
+                                           class="form-control @error('min_baseline_cases') is-invalid @enderror"
+                                           id="min_baseline_cases"
+                                           name="min_baseline_cases"
+                                           value="{{ old('min_baseline_cases', 0) }}"
                                            min="0">
-                                    @error('target_support_cases')
+                                    @error('min_baseline_cases')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="min_baseline_revenue" class="form-label">최소 기준 수익 (원)</label>
+                                    <input type="number"
+                                           class="form-control @error('min_baseline_revenue') is-invalid @enderror"
+                                           id="min_baseline_revenue"
+                                           name="min_baseline_revenue"
+                                           value="{{ old('min_baseline_revenue', 0) }}"
+                                           min="0"
+                                           step="10000">
+                                    @error('min_baseline_revenue')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="min_baseline_clients" class="form-label">최소 기준 고객 수</label>
+                                    <input type="number"
+                                           class="form-control @error('min_baseline_clients') is-invalid @enderror"
+                                           id="min_baseline_clients"
+                                           name="min_baseline_clients"
+                                           value="{{ old('min_baseline_clients', 0) }}"
+                                           min="0">
+                                    @error('min_baseline_clients')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
@@ -238,65 +259,174 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="commission_bonus_rate" class="form-label">추가 수수료율 (%)</label>
+                            <label for="baseline_quality_score" class="form-label">최소 품질 점수</label>
                             <input type="number"
-                                   class="form-control @error('commission_bonus_rate') is-invalid @enderror"
-                                   id="commission_bonus_rate"
-                                   name="commission_bonus_rate"
-                                   value="{{ old('commission_bonus_rate', 0) }}"
+                                   class="form-control @error('baseline_quality_score') is-invalid @enderror"
+                                   id="baseline_quality_score"
+                                   name="baseline_quality_score"
+                                   value="{{ old('baseline_quality_score', 80) }}"
                                    min="0"
                                    max="100"
                                    step="0.1">
-                            @error('commission_bonus_rate')
+                            @error('baseline_quality_score')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                            <small class="form-text text-muted">이 타입 파트너가 받는 추가 수수료율</small>
+                            <small class="form-text text-muted">타입별 최소 품질 점수 기준 (0-100점)</small>
                         </div>
+
+
                     </div>
                 </div>
 
-                <!-- 권한 설정 -->
+                <!-- 수수료 및 비용 설정 -->
                 <div class="card mb-4">
                     <div class="card-header">
                         <h5 class="card-title mb-0">
-                            <i class="fe fe-shield me-2"></i>권한 설정
+                            <i class="fe fe-dollar-sign me-2"></i>수수료 및 비용 설정
                         </h5>
                     </div>
                     <div class="card-body">
-                        <div class="mb-3">
-                            <label class="form-label">타입별 권한</label>
+                        <!-- 수수료 설정 -->
+                        <div class="mb-4">
+                            <h6 class="mb-3">수수료 설정</h6>
+
+                            <div class="mb-3">
+                                <label for="default_commission_type" class="form-label">수수료 타입 <span class="text-danger">*</span></label>
+                                <select class="form-control @error('default_commission_type') is-invalid @enderror"
+                                        id="default_commission_type"
+                                        name="default_commission_type"
+                                        onchange="toggleCommissionFields()" required>
+                                    <option value="percentage" {{ old('default_commission_type', 'percentage') === 'percentage' ? 'selected' : '' }}>퍼센트 기반 (%)</option>
+                                    <option value="fixed_amount" {{ old('default_commission_type') === 'fixed_amount' ? 'selected' : '' }}>고정 금액 (원)</option>
+                                </select>
+                                @error('default_commission_type')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
                             <div class="row">
-                                @foreach($defaultPermissions as $key => $label)
-                                    <div class="col-md-6 mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input"
-                                                   type="checkbox"
-                                                   name="permissions[]"
-                                                   value="{{ $key }}"
-                                                   id="permission_{{ $key }}"
-                                                   {{ in_array($key, old('permissions', [])) ? 'checked' : '' }}>
-                                            <label class="form-check-label" for="permission_{{ $key }}">
-                                                {{ $label }}
-                                            </label>
-                                        </div>
+                                <div class="col-md-6" id="percentage_fields">
+                                    <div class="mb-3">
+                                        <label for="default_commission_rate" class="form-label">기본 수수료율 (%)</label>
+                                        <input type="number"
+                                               class="form-control @error('default_commission_rate') is-invalid @enderror"
+                                               id="default_commission_rate"
+                                               name="default_commission_rate"
+                                               value="{{ old('default_commission_rate', 10) }}"
+                                               min="0" max="100" step="0.1">
+                                        @error('default_commission_rate')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
                                     </div>
-                                @endforeach
+                                </div>
+                                <div class="col-md-6" id="amount_fields" style="display: none;">
+                                    <div class="mb-3">
+                                        <label for="default_commission_amount" class="form-label">기본 수수료 금액 (원)</label>
+                                        <input type="number"
+                                               class="form-control @error('default_commission_amount') is-invalid @enderror"
+                                               id="default_commission_amount"
+                                               name="default_commission_amount"
+                                               value="{{ old('default_commission_amount', 0) }}"
+                                               min="0" step="1000">
+                                        @error('default_commission_amount')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <div class="mb-3">
+                                <label for="commission_notes" class="form-label">수수료 관련 참고사항</label>
+                                <textarea class="form-control @error('commission_notes') is-invalid @enderror"
+                                          id="commission_notes"
+                                          name="commission_notes"
+                                          rows="2"
+                                          placeholder="수수료 관련 특별 조건이나 참고사항을 입력하세요">{{ old('commission_notes') }}</textarea>
+                                @error('commission_notes')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="access_levels" class="form-label">접근 레벨</label>
-                            <textarea class="form-control @error('access_levels') is-invalid @enderror"
-                                      id="access_levels"
-                                      name="access_levels"
-                                      rows="2"
-                                      placeholder="쉼표로 구분하여 입력 (예: level_1, level_2)">{{ old('access_levels') }}</textarea>
-                            @error('access_levels')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                        <!-- 비용 설정 -->
+                        <div class="mb-4">
+                            <h6 class="mb-3">비용 설정</h6>
+
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="registration_fee" class="form-label">등록비 (원)</label>
+                                        <input type="number"
+                                               class="form-control @error('registration_fee') is-invalid @enderror"
+                                               id="registration_fee"
+                                               name="registration_fee"
+                                               value="{{ old('registration_fee', 0) }}"
+                                               min="0" step="10000">
+                                        @error('registration_fee')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="monthly_maintenance_fee" class="form-label">월 유지비 (원)</label>
+                                        <input type="number"
+                                               class="form-control @error('monthly_maintenance_fee') is-invalid @enderror"
+                                               id="monthly_maintenance_fee"
+                                               name="monthly_maintenance_fee"
+                                               value="{{ old('monthly_maintenance_fee', 0) }}"
+                                               min="0" step="1000">
+                                        @error('monthly_maintenance_fee')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="annual_maintenance_fee" class="form-label">연 유지비 (원)</label>
+                                        <input type="number"
+                                               class="form-control @error('annual_maintenance_fee') is-invalid @enderror"
+                                               id="annual_maintenance_fee"
+                                               name="annual_maintenance_fee"
+                                               value="{{ old('annual_maintenance_fee', 0) }}"
+                                               min="0" step="10000">
+                                        @error('annual_maintenance_fee')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           id="fee_waiver_available"
+                                           name="fee_waiver_available"
+                                           {{ old('fee_waiver_available') ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="fee_waiver_available">
+                                        비용 면제 가능
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="fee_structure_notes" class="form-label">비용 구조 관련 참고사항</label>
+                                <textarea class="form-control @error('fee_structure_notes') is-invalid @enderror"
+                                          id="fee_structure_notes"
+                                          name="fee_structure_notes"
+                                          rows="2"
+                                          placeholder="비용 구조나 면제 조건 등에 대한 참고사항을 입력하세요">{{ old('fee_structure_notes') }}</textarea>
+                                @error('fee_structure_notes')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
                         </div>
+
                     </div>
                 </div>
+
             </div>
 
             <div class="col-lg-4">
@@ -321,52 +451,6 @@
                     </div>
                 </div>
 
-                <!-- 교육 및 인증 -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h6 class="card-title mb-0">
-                            <i class="fe fe-book me-2"></i>교육 및 인증
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label for="training_hours_required" class="form-label">필수 교육 시간</label>
-                            <input type="number"
-                                   class="form-control @error('training_hours_required') is-invalid @enderror"
-                                   id="training_hours_required"
-                                   name="training_hours_required"
-                                   value="{{ old('training_hours_required', 0) }}"
-                                   min="0">
-                            @error('training_hours_required')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="certification_valid_until" class="form-label">인증 유효기간</label>
-                            <input type="date"
-                                   class="form-control @error('certification_valid_until') is-invalid @enderror"
-                                   id="certification_valid_until"
-                                   name="certification_valid_until"
-                                   value="{{ old('certification_valid_until') }}">
-                            @error('certification_valid_until')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="training_requirements" class="form-label">교육 요구사항</label>
-                            <textarea class="form-control @error('training_requirements') is-invalid @enderror"
-                                      id="training_requirements"
-                                      name="training_requirements"
-                                      rows="3"
-                                      placeholder="쉼표로 구분하여 입력">{{ old('training_requirements') }}</textarea>
-                            @error('training_requirements')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </div>
-                </div>
 
                 <!-- 관리자 메모 -->
                 <div class="card mb-4">
@@ -408,3 +492,35 @@
 
 </div>
 @endsection
+
+@push('scripts')
+<script>
+// 수수료 타입에 따른 필드 표시/숨김
+function toggleCommissionFields() {
+    const commissionType = document.getElementById('default_commission_type').value;
+    const percentageFields = document.getElementById('percentage_fields');
+    const amountFields = document.getElementById('amount_fields');
+
+    if (commissionType === 'percentage') {
+        percentageFields.style.display = 'block';
+        amountFields.style.display = 'none';
+
+        // 퍼센트 필드를 필수로 설정
+        document.getElementById('default_commission_rate').required = true;
+        document.getElementById('default_commission_amount').required = false;
+    } else {
+        percentageFields.style.display = 'none';
+        amountFields.style.display = 'block';
+
+        // 금액 필드를 필수로 설정
+        document.getElementById('default_commission_rate').required = false;
+        document.getElementById('default_commission_amount').required = true;
+    }
+}
+
+// 페이지 로드시 초기 설정
+document.addEventListener('DOMContentLoaded', function() {
+    toggleCommissionFields();
+});
+</script>
+@endpush

@@ -113,7 +113,7 @@ async function performSearch() {
     hideSearchError();
 
     try {
-        const response = await fetch(`/api/admin/partner/users/search?query=${encodeURIComponent(query)}&limit=${limit}`, {
+        const response = await fetch(`/api/admin/partner/v1/users/search?query=${encodeURIComponent(query)}&limit=${limit}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',

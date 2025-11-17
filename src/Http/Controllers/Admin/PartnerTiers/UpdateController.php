@@ -29,6 +29,11 @@ class UpdateController extends Controller
         $item = $this->model::findOrFail($id);
         $validated = $request->validate($this->getValidationRules($item));
 
+        // tier_code를 소문자로 변환 (새 구조에 맞춤)
+        if (!empty($validated['tier_code'])) {
+            $validated['tier_code'] = strtolower($validated['tier_code']);
+        }
+
         // JSON 필드 처리
         if ($request->has('requirements') && is_string($request->requirements)) {
             $validated['requirements'] = json_decode($request->requirements, true);
@@ -38,9 +43,15 @@ class UpdateController extends Controller
         }
 
         // Checkbox 필드 처리
-        $validated['can_recruit'] = $request->has('can_recruit') ? true : false;
-        $validated['cost_management_enabled'] = $request->has('cost_management_enabled') ? true : false;
-        $validated['is_active'] = $request->has('is_active') ? true : false;
+        $validated['fee_waiver_available'] = $request->has('fee_waiver_available');
+        $validated['is_active'] = $request->has('is_active');
+
+        // 수수료 타입별 처리
+        if ($validated['commission_type'] === 'percentage') {
+            $validated['commission_amount'] = null;
+        } else {
+            $validated['commission_rate'] = null;
+        }
 
         $item->update($validated);
 
@@ -59,40 +70,31 @@ class UpdateController extends Controller
 
         return [
             'tier_code' => $tierCodeRule,
-            'tier_name' => 'required|string|max:100',
-            'description' => 'nullable|string',
-            'commission_rate' => 'required|numeric|min:0|max:100',
-            'priority_level' => 'required|integer|min:1',
+            'tier_name' => 'required|string|max:100|unique:partner_tiers,tier_name' . ($item ? ',' . $item->id : ''),
+            'description' => 'nullable|string|max:1000',
+
+            // 우선순위
+            'priority_level' => 'required|integer|min:1|max:99',
+            'sort_order' => 'nullable|integer|min:0',
+
+            // 수수료 설정
+            'commission_type' => 'required|in:percentage,fixed_amount',
+            'commission_rate' => 'nullable|numeric|min:0|max:100|required_if:commission_type,percentage',
+            'commission_amount' => 'nullable|numeric|min:0|required_if:commission_type,fixed_amount',
+
+            // 비용 관리
+            'registration_fee' => 'nullable|numeric|min:0',
+            'monthly_fee' => 'nullable|numeric|min:0',
+            'annual_fee' => 'nullable|numeric|min:0',
+            'fee_waiver_available' => 'boolean',
+            'fee_structure_notes' => 'nullable|string|max:500',
+
+            // JSON 필드
             'requirements' => 'nullable|json',
             'benefits' => 'nullable|json',
+
+            // 시스템 설정
             'is_active' => 'boolean',
-            'sort_order' => 'nullable|integer',
-            'min_completed_jobs' => 'nullable|integer|min:0',
-            'min_rating' => 'nullable|numeric|min:0|max:5',
-            'min_punctuality_rate' => 'nullable|numeric|min:0|max:100',
-            'min_satisfaction_rate' => 'nullable|numeric|min:0|max:100',
-
-            // 계층 관리 필드
-            'can_recruit' => 'boolean',
-            'max_children' => 'nullable|integer|min:0|max:999',
-            'max_depth' => 'nullable|integer|min:1|max:20',
-
-            // 비용 관리 필드
-            'cost_management_enabled' => 'boolean',
-            'registration_fee' => 'nullable|numeric|min:0',
-            'activation_fee' => 'nullable|numeric|min:0',
-            'upgrade_fee' => 'nullable|numeric|min:0',
-            'monthly_maintenance_fee' => 'nullable|numeric|min:0',
-            'annual_maintenance_fee' => 'nullable|numeric|min:0',
-            'renewal_fee' => 'nullable|numeric|min:0',
-            'service_fee_rate' => 'nullable|numeric|min:0|max:100',
-            'platform_fee_rate' => 'nullable|numeric|min:0|max:100',
-            'transaction_fee_rate' => 'nullable|numeric|min:0|max:100',
-            'security_deposit' => 'nullable|numeric|min:0',
-            'performance_bond' => 'nullable|numeric|min:0',
-            'early_payment_discount_rate' => 'nullable|numeric|min:0|max:100',
-            'loyalty_discount_rate' => 'nullable|numeric|min:0|max:100',
-            'volume_discount_rate' => 'nullable|numeric|min:0|max:100'
         ];
     }
 }

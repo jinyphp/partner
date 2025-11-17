@@ -26,7 +26,7 @@ class ShowController extends Controller
      */
     public function __invoke($id)
     {
-        $item = $this->model::with(['parentTier', 'childTiers', 'partnerUsers'])->findOrFail($id);
+        $item = $this->model::with(['partnerUsers'])->findOrFail($id);
 
         // 이 등급에 속한 파트너 통계
         $partnerStats = $this->getPartnerStatistics($item);

@@ -67,6 +67,51 @@
         </div>
     </div>
 
+    @if($partnerCode)
+    <!-- 파트너 코드 공유하기 섹션 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-primary">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h5 class="text-primary mb-2">
+                                <i class="fe fe-share-2 me-2"></i>내 파트너 코드 공유하기
+                            </h5>
+                            <p class="mb-2">파트너 코드를 공유하여 새로운 파트너를 추천하세요.</p>
+                            <div class="d-flex align-items-center">
+                                <div class="input-group me-3" style="max-width: 300px;">
+                                    <input type="text" class="form-control" id="partnerCodeInput"
+                                           value="{{ $partnerCode }}" readonly>
+                                    <button class="btn btn-outline-primary" type="button"
+                                            onclick="copyPartnerCode()" title="코드 복사">
+                                        <i class="fe fe-copy"></i>
+                                    </button>
+                                </div>
+                                <button type="button" class="btn btn-primary" onclick="sharePartnerCode()">
+                                    <i class="fe fe-share me-1"></i>공유하기
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="p-3 bg-light rounded">
+                                <h6 class="mb-1">추천 URL</h6>
+                                <small class="text-muted d-block">
+                                    {{ url('/home/partner/regist') }}
+                                </small>
+                                <button class="btn btn-sm btn-outline-primary mt-2"
+                                        onclick="copyReferralUrl()" title="URL 복사">
+                                    <i class="fe fe-link me-1"></i>URL 복사
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <!-- Statistics Cards -->
     <div class="row mb-4">
         <!-- Network Information -->
@@ -296,11 +341,19 @@
                                 <i class="fe fe-star me-2"></i>리뷰 관리
                             </a>
                         </div>
+                        @if($partnerCode)
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <button type="button" onclick="sharePartnerCode()" class="btn btn-outline-purple w-100">
+                                <i class="fe fe-share-2 me-2"></i>파트너 코드 공유
+                            </button>
+                        </div>
+                        @else
                         <div class="col-lg-3 col-md-6 mb-3">
                             <a href="{{ route('home.partner.commission.calculate') }}" class="btn btn-outline-warning w-100">
                                 <i class="fe fe-calculator me-2"></i>수익 계산기
                             </a>
                         </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -355,5 +408,118 @@
     width: 4rem;
     height: 4rem;
 }
+
+.btn-outline-purple {
+    color: #6f42c1;
+    border-color: #6f42c1;
+}
+
+.btn-outline-purple:hover {
+    color: #fff;
+    background-color: #6f42c1;
+    border-color: #6f42c1;
+}
 </style>
+
+<script>
+// 파트너 코드 복사 기능
+function copyPartnerCode() {
+    const codeInput = document.getElementById('partnerCodeInput');
+
+    // 클립보드에 복사
+    navigator.clipboard.writeText(codeInput.value)
+        .then(() => {
+            // 성공 메시지 표시
+            showToast('success', '파트너 코드가 복사되었습니다!');
+        })
+        .catch(() => {
+            // 폴백: 선택 후 복사 명령
+            codeInput.select();
+            codeInput.setSelectionRange(0, 99999); // 모바일 지원
+            document.execCommand('copy');
+            showToast('success', '파트너 코드가 복사되었습니다!');
+        });
+}
+
+// 추천 URL 복사 기능
+function copyReferralUrl() {
+    const referralUrl = '{{ url("/home/partner/regist") }}';
+
+    navigator.clipboard.writeText(referralUrl)
+        .then(() => {
+            showToast('success', '추천 URL이 복사되었습니다!');
+        })
+        .catch(() => {
+            // 폴백 방법
+            const textarea = document.createElement('textarea');
+            textarea.value = referralUrl;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast('success', '추천 URL이 복사되었습니다!');
+        });
+}
+
+// 파트너 코드 공유 기능
+function sharePartnerCode() {
+    const partnerCode = '{{ $partnerCode ?? "" }}';
+    const shareData = {
+        title: '파트너 프로그램 가입 추천',
+        text: `파트너 코드: ${partnerCode}\n파트너 프로그램에 가입하세요!`,
+        url: '{{ url("/home/partner/regist") }}'
+    };
+
+    // Web Share API 지원 확인
+    if (navigator.share) {
+        navigator.share(shareData)
+            .then(() => {
+                showToast('success', '공유가 완료되었습니다!');
+            })
+            .catch((error) => {
+                // 공유 취소 또는 실패 시 폴백
+                fallbackShare();
+            });
+    } else {
+        // Web Share API 미지원 시 폴백
+        fallbackShare();
+    }
+}
+
+// 공유 폴백 기능
+function fallbackShare() {
+    const partnerCode = '{{ $partnerCode ?? "" }}';
+    const referralUrl = '{{ url("/home/partner/regist") }}';
+    const shareText = `파트너 프로그램 가입하세요!\n\n파트너 코드: ${partnerCode}\n가입 링크: ${referralUrl}`;
+
+    // 텍스트 복사
+    navigator.clipboard.writeText(shareText)
+        .then(() => {
+            showToast('info', '공유 정보가 복사되었습니다!\n원하는 곳에 붙여넣기하여 공유하세요.');
+        })
+        .catch(() => {
+            showToast('warning', '공유 기능을 사용할 수 없습니다.');
+        });
+}
+
+// 토스트 메시지 표시 기능
+function showToast(type, message) {
+    // Bootstrap Toast 또는 간단한 알림 구현
+    if (typeof Swal !== 'undefined') {
+        // SweetAlert2가 있는 경우
+        Swal.fire({
+            icon: type === 'success' ? 'success' : type === 'info' ? 'info' : 'warning',
+            title: message,
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
+    } else {
+        // 기본 알림 또는 간단한 토스트 구현
+        alert(message);
+    }
+}
+</script>
 @endsection

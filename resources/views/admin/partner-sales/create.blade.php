@@ -37,26 +37,11 @@
                         <h6 class="m-0 font-weight-bold text-primary">매출 정보</h6>
                     </div>
                     <div class="card-body">
-                        <!-- 파트너 선택 -->
-                        <div class="form-group">
-                            <label for="partner_id" class="required">파트너 <span class="text-danger">*</span></label>
-                            <select class="form-control @error('partner_id') is-invalid @enderror"
-                                    id="partner_id" name="partner_id" required>
-                                <option value="">파트너를 선택하세요</option>
-                                @foreach($partners as $partner)
-                                    <option value="{{ $partner['id'] }}"
-                                            {{ old('partner_id', $selectedPartnerId) == $partner['id'] ? 'selected' : '' }}
-                                            data-tier="{{ $partner['tier_name'] }}"
-                                            data-type="{{ $partner['type_name'] }}">
-                                        {{ $partner['display_name'] }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('partner_id')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            <small class="form-text text-muted">매출을 올린 파트너를 선택하세요.</small>
-                        </div>
+                        <!-- 파트너 선택 (검색 방식) -->
+                        @include('jiny-partner::admin.partner-sales.partials.search_partner', [
+                            'selectedPartnerId' => old('partner_id', $selectedPartnerId ?? null),
+                            'selectedPartner' => $selectedPartner ?? null
+                        ])
 
                         <!-- 매출 제목 -->
                         <div class="form-group">
@@ -312,14 +297,11 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
-    // 파트너 선택 시 정보 표시
-    $('#partner_id').change(function() {
-        const selectedOption = $(this).find('option:selected');
-        const partnerId = $(this).val();
-
-        if (partnerId) {
-            const tier = selectedOption.data('tier');
-            const type = selectedOption.data('type');
+    // 파트너 선택 변화 감지 (검색 기능과 연동)
+    function onPartnerSelected(partnerData) {
+        if (partnerData) {
+            const tier = partnerData.tier_name;
+            const type = partnerData.type_name;
 
             $('#partnerDetails').html(`
                 <div class="mb-2">
@@ -337,6 +319,17 @@ $(document).ready(function() {
         } else {
             $('#partnerInfo').hide();
         }
+    }
+
+    // 파트너 ID 필드 변화 감지
+    $(document).on('change', '#partner_id', function() {
+        const partnerId = $(this).val();
+
+        if (partnerId && partnerSearchState.selectedPartner) {
+            onPartnerSelected(partnerSearchState.selectedPartner);
+        } else {
+            $('#partnerInfo').hide();
+        }
     });
 
     // 금액 입력 시 커미션 미리보기 업데이트
@@ -349,8 +342,20 @@ $(document).ready(function() {
         const partnerId = $('#partner_id').val();
         const amount = parseFloat($('#amount').val()) || 0;
 
-        if (partnerId && amount > 0) {
-            // 실제 구현에서는 AJAX로 커미션 계산 API 호출
+        if (partnerId && amount > 0 && partnerSearchState.selectedPartner) {
+            const commissionRate = partnerSearchState.selectedPartner.total_commission_rate;
+            const estimatedCommission = (amount * commissionRate / 100).toLocaleString('ko-KR');
+
+            $('#commissionPreview').html(`
+                <div class="alert alert-success">
+                    <small>
+                        <strong>커미션 계산 미리보기</strong><br>
+                        매출 금액: ${amount.toLocaleString('ko-KR')}원<br>
+                        커미션율: ${commissionRate}%<br>
+                        <strong class="text-success">예상 커미션: ${estimatedCommission}원</strong>
+                    </small>
+                </div>
+            `);
             $('#commissionPreview').show();
         } else {
             $('#commissionPreview').hide();
@@ -404,9 +409,21 @@ $(document).ready(function() {
     });
 
     // 초기 파트너 정보 표시 (편집 모드에서)
-    if ($('#partner_id').val()) {
-        $('#partner_id').trigger('change');
+    const initialPartnerId = $('#partner_id').val();
+    if (initialPartnerId) {
+        // 기존에 선택된 파트너가 있는 경우 파트너 정보를 표시
+        // 이미 search_partner.blade.php에서 처리됨
+        setTimeout(() => {
+            if (partnerSearchState.selectedPartner) {
+                onPartnerSelected(partnerSearchState.selectedPartner);
+            }
+        }, 100);
     }
+
+    // 파트너 검색 결과에서 파트너 선택 시 호출되는 함수 재정의
+    window.showPartnerInfo = function(partnerData) {
+        onPartnerSelected(partnerData);
+    };
 });
 </script>
 @endpush

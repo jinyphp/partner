@@ -29,7 +29,7 @@ class PendingController extends PartnerController
                 ->first();
 
             if ($partnerApplication) {
-                return redirect()->route('home.partner.regist.status', $partnerApplication->id)
+                return redirect()->route('home.partner.regist.status')
                     ->with('info', '파트너 신청이 아직 처리 중입니다.');
             } else {
                 return redirect()->route('home.partner.intro')

@@ -6,14 +6,42 @@
     <div class="container-fluid">
 
         <!-- 헤더 -->
-        <div class="row mb-4">
+        <section class="row mb-4">
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h2 class="mb-1">{{ $pageTitle }}</h2>
-                        <p class="text-muted mb-0">
+                        <p class="text-muted mb-1">
                             지원자: {{ $application->personal_info['name'] ?? ($application->user->name ?? 'Unknown') }}
                         </p>
+                        @php
+                            $headerEmail = null;
+                            // 이메일 정보 확인 (개인정보 섹션과 동일한 로직)
+                            if (!empty($application->personal_info['email'])) {
+                                $headerEmail = $application->personal_info['email'];
+                            } elseif (isset($application->user) && !empty($application->user->email)) {
+                                $headerEmail = $application->user->email;
+                            } elseif (!empty($application->user_uuid)) {
+                                $user = \App\Models\User::where('uuid', $application->user_uuid)->first();
+                                if ($user && !empty($user->email)) {
+                                    $headerEmail = $user->email;
+                                }
+                            } elseif (!empty($application->email)) {
+                                $headerEmail = $application->email;
+                            }
+                        @endphp
+                        @if ($headerEmail)
+                            <p class="text-muted mb-0">
+                                <i class="fe fe-mail me-1"></i>{{ $headerEmail }}
+                                {{-- <a href="mailto:{{ $headerEmail }}" class="btn btn-sm btn-link p-0 ms-2">
+                                    <i class="fe fe-external-link"></i>
+                                </a> --}}
+                            </p>
+                        @else
+                            <p class="text-danger mb-0">
+                                <i class="fe fe-alert-triangle me-1"></i>이메일 정보가 없습니다
+                            </p>
+                        @endif
                     </div>
                     <div>
                         @if ($navigation['prev'])
@@ -34,7 +62,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
         <!-- 진행 단계 표시 -->
         {{-- <div class="row mb-4">
@@ -179,38 +207,134 @@
             </div>
         </div>
 
-        <!-- 추천 파트너 정보 (추천인이 있는 경우만 표시) -->
-        @if ($application->referrerPartner)
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header ">
-                    <h6 class="mb-0 text-dark">
-                        <i class="fe fe-users me-2"></i>추천 파트너 정보
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <strong>파트너 코드:</strong>
-                            <span class="badge bg-primary ms-2">{{ $application->referrerPartner->partner_code }}</span>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <strong>추천인 이름:</strong> {{ $application->referrerPartner->name }}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <strong>추천인 이메일:</strong> {{ $application->referrerPartner->email ?? 'N/A' }}
-                        </div>
-                        @if ($application->referrerPartner->partnerTier)
-                            <div class="col-md-6 mb-3">
-                                <strong>추천인 등급:</strong>
-                                <span
-                                    class="badge bg-success">{{ $application->referrerPartner->partnerTier->tier_name }}</span>
+        <div class="row">
+            <div class="col-lg-4">
+                <!-- 개인정보 -->
+                <section class="card border-0 shadow-sm mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fe fe-user me-2"></i>개인정보</h5>
+                    </div>
+                    <div class="card-body">
+                        @if ($application->personal_info)
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <strong>이름:</strong> {{ $application->personal_info['name'] ?? 'N/A' }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <strong>연락처:</strong> {{ $application->personal_info['phone'] ?? 'N/A' }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <strong>이메일:</strong>
+                                    @php
+                                        $email = null;
+                                        // 1. personal_info에서 이메일 확인
+                                        if (!empty($application->personal_info['email'])) {
+                                            $email = $application->personal_info['email'];
+                                        }
+                                        // 2. user 관계에서 이메일 확인
+                                        elseif (isset($application->user) && !empty($application->user->email)) {
+                                            $email = $application->user->email;
+                                        }
+                                        // 3. user_uuid로 사용자 검색해서 이메일 확인
+                                        elseif (!empty($application->user_uuid)) {
+                                            $user = \App\Models\User::where('uuid', $application->user_uuid)->first();
+                                            if ($user && !empty($user->email)) {
+                                                $email = $user->email;
+                                            }
+                                        }
+                                        // 4. email 필드가 직접 있는지 확인
+                                        elseif (!empty($application->email)) {
+                                            $email = $application->email;
+                                        }
+                                    @endphp
+
+                                    @if ($email)
+                                        <span class="text-primary">{{ $email }}</span>
+                                        {{-- <a href="mailto:{{ $email }}" class="btn btn-sm btn-outline-primary ms-2">
+                                            <i class="fe fe-mail"></i>
+                                        </a> --}}
+                                    @else
+                                        <span class="text-muted">이메일 정보 없음</span>
+                                        <small class="text-danger ms-2">(확인 필요)</small>
+                                    @endif
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <strong>주소:</strong> {{ $application->personal_info['address'] ?? 'N/A' }}
+                                </div>
+                                @if (isset($application->personal_info['emergency_contact']))
+                                    <div class="col-12">
+                                        <strong>비상연락처:</strong>
+                                        {{ $application->personal_info['emergency_contact']['name'] ?? 'N/A' }}
+                                        ({{ $application->personal_info['emergency_contact']['phone'] ?? 'N/A' }})
+                                        - {{ $application->personal_info['emergency_contact']['relationship'] ?? 'N/A' }}
+                                    </div>
+                                @endif
                             </div>
+                        @else
+                            <p class="text-muted">개인정보가 입력되지 않았습니다.</p>
                         @endif
                     </div>
-                </div>
+                </section>
             </div>
-        @endif
+            <div class="col-lg-8">
+                <!-- 추천 파트너 정보 (추천인이 있는 경우만 표시) -->
+                @if ($application->referrerPartner)
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header ">
+                            <h6 class="mb-0 text-dark">
+                                <i class="fe fe-users me-2"></i>추천 파트너 정보
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <strong>파트너 코드:</strong>
+                                    <span
+                                        class="badge bg-primary ms-2">{{ $application->referrerPartner->partner_code }}</span>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <strong>추천인 이름:</strong> {{ $application->referrerPartner->name }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <strong>추천인 이메일:</strong>
+                                    @php
+                                        $referrerEmail = null;
+                                        // 추천인 이메일 확인
+                                        if (!empty($application->referrerPartner->email)) {
+                                            $referrerEmail = $application->referrerPartner->email;
+                                        } elseif (!empty($application->referrerPartner->user_uuid)) {
+                                            $referrerUser = \App\Models\User::where(
+                                                'uuid',
+                                                $application->referrerPartner->user_uuid,
+                                            )->first();
+                                            if ($referrerUser && !empty($referrerUser->email)) {
+                                                $referrerEmail = $referrerUser->email;
+                                            }
+                                        }
+                                    @endphp
 
+                                    @if ($referrerEmail)
+                                        <span class="text-success">{{ $referrerEmail }}</span>
+                                        {{-- <a href="mailto:{{ $referrerEmail }}" class="btn btn-sm btn-outline-success ms-2">
+                                    <i class="fe fe-mail"></i>
+                                </a> --}}
+                                    @else
+                                        <span class="text-muted">이메일 정보 없음</span>
+                                    @endif
+                                </div>
+                                @if ($application->referrerPartner->partnerTier)
+                                    <div class="col-md-6 mb-3">
+                                        <strong>추천인 등급:</strong>
+                                        <span
+                                            class="badge bg-success">{{ $application->referrerPartner->partnerTier->tier_name }}</span>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </div>
 
 
 
@@ -219,7 +343,7 @@
         <div class="row">
             <div class="col-lg-4">
                 <!-- 진행 로그 -->
-                <div class="card border-0 shadow-sm mb-4">
+                <section class="card border-0 shadow-sm mb-4">
                     <div class="card-header">
                         <h6 class="mb-0">
                             <i class="fe fe-clock text-primary me-2"></i>진행 로그
@@ -629,10 +753,10 @@
                             </div>
                         @endif
                     </div>
-                </div>
+                </section>
 
                 <!-- 파트너 등급 정보 -->
-                <div class="card border-0 shadow-sm mb-4">
+                <section class="card border-0 shadow-sm mb-4">
                     <div class="card-header">
                         <h6 class="mb-0">파트너 등급별 혜택</h6>
                     </div>
@@ -649,13 +773,13 @@
                             </div>
                         @endforeach
                     </div>
-                </div>
+                </section>
 
             </div>
             <div class="col-lg-8">
 
                 <!-- 평가 결과 -->
-                <div class="row mb-4">
+                <section class="row mb-4">
                     <div class="col-lg-6">
                         <div class="card border-0 shadow-sm d-flex" style="min-height: 200px;">
                             <div class="card-header bg-success text-white">
@@ -696,56 +820,12 @@
                             </div>
                         </div>
                     </div>
-                </div>
-
-
-
-                <!-- 개인정보 -->
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="fe fe-user me-2"></i>개인정보</h5>
-                    </div>
-                    <div class="card-body">
-                        @if ($application->personal_info)
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <strong>이름:</strong> {{ $application->personal_info['name'] ?? 'N/A' }}
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <strong>연락처:</strong> {{ $application->personal_info['phone'] ?? 'N/A' }}
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <strong>이메일:</strong>
-                                    {{ $application->personal_info['email'] ?? ($application->user->email ?? 'N/A') }}
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <strong>출생년도:</strong> {{ $application->personal_info['birth_year'] ?? 'N/A' }}
-                                </div>
-                                <div class="col-12 mb-3">
-                                    <strong>주소:</strong> {{ $application->personal_info['address'] ?? 'N/A' }}
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <strong>학력:</strong> {{ $application->personal_info['education_level'] ?? 'N/A' }}
-                                </div>
-                                @if (isset($application->personal_info['emergency_contact']))
-                                    <div class="col-12">
-                                        <strong>비상연락처:</strong>
-                                        {{ $application->personal_info['emergency_contact']['name'] ?? 'N/A' }}
-                                        ({{ $application->personal_info['emergency_contact']['phone'] ?? 'N/A' }})
-                                        - {{ $application->personal_info['emergency_contact']['relationship'] ?? 'N/A' }}
-                                    </div>
-                                @endif
-                            </div>
-                        @else
-                            <p class="text-muted">개인정보가 입력되지 않았습니다.</p>
-                        @endif
-                    </div>
-                </div>
+                </section>
 
 
 
                 <!-- 경력정보 -->
-                <div class="card border-0 shadow-sm mb-4">
+                <section class="card border-0 shadow-sm mb-4">
                     <div class="card-header">
                         <h5 class="mb-0"><i class="fe fe-briefcase me-2"></i>경력정보</h5>
                     </div>
@@ -815,10 +895,10 @@
                             <p class="text-muted">경력정보가 입력되지 않았습니다.</p>
                         @endif
                     </div>
-                </div>
+                </section>
 
                 <!-- 기술정보 -->
-                <div class="card border-0 shadow-sm mb-4">
+                <section class="card border-0 shadow-sm mb-4">
                     <div class="card-header">
                         <h5 class="mb-0"><i class="fe fe-code me-2"></i>기술정보</h5>
                     </div>
@@ -878,10 +958,10 @@
                             <p class="text-muted">기술정보가 입력되지 않았습니다.</p>
                         @endif
                     </div>
-                </div>
+                </section>
 
                 <!-- 근무 조건 -->
-                <div class="card border-0 shadow-sm mb-4">
+                <section class="card border-0 shadow-sm mb-4">
                     <div class="card-header">
                         <h5 class="mb-0"><i class="fe fe-clock me-2"></i>근무 조건</h5>
                     </div>
@@ -910,7 +990,7 @@
                             </div>
                         @endif
                     </div>
-                </div>
+                </section>
 
                 <!-- 추천사항 -->
                 @if (count($evaluation['recommendations']) > 0)
@@ -943,19 +1023,22 @@
 
 
                 <!-- 액션 버튼 -->
-                @if (in_array($application->application_status, ['submitted', 'reviewing', 'interview', 'reapplied']))
-                    <div class="row mb-4">
+                @if (in_array($application->application_status, ['submitted', 'reviewing', 'interview', 'reapplied', 'approved']))
+                    <section class="row mb-4">
                         <div class="col-12">
                             <div class="card border-0 shadow-sm">
                                 <div class="card-body">
                                     <div class="d-flex justify-content-center gap-3">
                                         @if (in_array($application->application_status, ['submitted', 'reviewing', 'interview', 'reapplied']))
+
                                             <button type="button" class="btn btn-success" onclick="showApproveModal()">
                                                 <i class="fe fe-check me-2"></i>승인
                                             </button>
-                                            <button type="button" class="btn btn-danger" onclick="showRejectModal()">
+
+                                            <button type="button" class="btn btn-warning" onclick="showRejectModal()">
                                                 <i class="fe fe-x me-2"></i>거부
                                             </button>
+
                                             <button type="button" class="btn btn-info" onclick="showInterviewModal()">
                                                 <i class="fe fe-calendar me-2"></i>
                                                 @if ($application->application_status === 'interview')
@@ -964,15 +1047,14 @@
                                                     면접 설정
                                                 @endif
                                             </button>
-                                        @endif
+                                        @elseif ($application->application_status === 'approved')
 
-                                        <!-- 삭제 버튼 - 특정 상태에서만 표시 -->
-                                        @if (in_array($application->application_status, ['pending', 'submitted', 'reviewing', 'rejected', 'draft', 'cancelled']))
-                                            <button type="button" class="btn btn-outline-secondary"
-                                                onclick="showDeleteModal()">
-                                                <i class="fe fe-trash-2 me-2"></i>삭제
+                                            <button type="button" class="btn btn-danger" onclick="showRevokeModal()">
+                                                <i class="fe fe-rotate-ccw me-2"></i>승인 취소
                                             </button>
                                         @endif
+
+
 
                                         @if (
                                             $application->application_status === 'reviewing' &&
@@ -982,222 +1064,46 @@
                                                 <i class="fe fe-eye me-2"></i>검토 시작
                                             </button>
                                         @endif
+
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </section>
                 @endif
 
-                <div class="d-flex justify-content-center gap-3">
-                    <x-jiny-auth::modal-delete :deleteUrl="route('admin.partner.approval.destroy', $application->id)">
-                        <i class="fe fe-trash-2 me-2"></i>신청서 삭제
-                    </x-jiny-auth::modal-delete>
-                </div>
 
-
+                <!-- 삭제 버튼 - 특정 상태에서만 표시 -->
+                @if (in_array($application->application_status, ['submitted', 'reviewing', 'interview', 'reapplied']))
+                    @if (in_array($application->application_status, ['pending', 'submitted', 'reviewing', 'rejected', 'draft', 'cancelled']))
+                        {{-- <button type="button" class="btn btn-outline-secondary"
+                            onclick="showDeleteModal()">
+                            <i class="fe fe-trash-2 me-2"></i>삭제
+                        </button> --}}
+                        <section class="d-flex justify-content-center gap-3">
+                            <x-jiny-auth::modal-delete :deleteUrl="route('admin.partner.approval.destroy', $application->id)">
+                                <i class="fe fe-trash-2 me-2"></i>신청서 삭제
+                            </x-jiny-auth::modal-delete>
+                        </section>
+                    @endif
+                @endif
 
             </div>
+
         </div>
-
-
-
     </div>
 
     <!-- 승인 모달 -->
-    <div class="modal fade" id="approveModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">파트너 신청 승인</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <form id="approveForm" action="{{ route('admin.partner.approval.approve', $application->id) }}"
-                    method="POST">
-                    @csrf
-                    <div class="modal-body">
-                        <div class="alert alert-success">
-                            <i class="fe fe-check-circle me-2"></i>
-                            <strong>승인 확인</strong><br>
-                            이 지원자를 파트너로 승인하면 자동으로 파트너 회원으로 등록됩니다.
-                        </div>
-
-                        <div class="form-group mb-3">
-                            <label for="admin_notes">관리자 메모 (선택사항)</label>
-                            <textarea name="admin_notes" id="admin_notes" class="form-control" rows="3"
-                                placeholder="승인과 관련된 메모를 입력하세요..."></textarea>
-                        </div>
-
-                        <div class="form-group mb-3">
-                            <label for="welcome_message">환영 메시지 (선택사항)</label>
-                            <textarea name="welcome_message" id="welcome_message" class="form-control" rows="2"
-                                placeholder="승인 알림과 함께 전송할 환영 메시지를 입력하세요..."></textarea>
-                        </div>
-
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="notify_user" id="notify_user"
-                                value="1" checked>
-                            <label class="form-check-label" for="notify_user">
-                                지원자에게 승인 알림 전송
-                            </label>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                        <button type="submit" class="btn btn-success">
-                            <i class="fe fe-check me-2"></i>승인 확인
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    @includeIf('jiny-partner::admin.partner-approval.partials.modal_approve')
 
     <!-- 거부 모달 -->
-    <div class="modal fade" id="rejectModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">파트너 신청 거부</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <form id="rejectForm" action="{{ route('admin.partner.approval.reject', $application->id) }}"
-                    method="POST">
-                    @csrf
-                    <div class="modal-body">
-                        <div class="alert alert-warning">
-                            <i class="fe fe-alert-triangle me-2"></i>
-                            <strong>거부 확인</strong><br>
-                            이 작업은 되돌릴 수 없습니다. 신중하게 검토해주세요.
-                        </div>
+    @includeIf('jiny-partner::admin.partner-approval.partials.modal_reject')
 
-                        <div class="form-group mb-3">
-                            <label for="rejection_reason">거부 사유 <span class="text-danger">*</span></label>
-                            <textarea name="rejection_reason" id="rejection_reason" class="form-control" rows="4"
-                                placeholder="거부 사유를 상세히 입력해주세요..." required></textarea>
-                            <small class="form-text text-muted">지원자가 개선할 수 있도록 구체적인 피드백을 제공해주세요.</small>
-                        </div>
-
-                        <div class="form-group mb-3">
-                            <label for="admin_notes_reject">관리자 메모 (선택사항)</label>
-                            <textarea name="admin_notes" id="admin_notes_reject" class="form-control" rows="2"
-                                placeholder="내부 참고용 메모를 입력하세요..."></textarea>
-                        </div>
-
-                        <div class="form-group mb-3">
-                            <label for="feedback_message">지원자 피드백 메시지 (선택사항)</label>
-                            <textarea name="feedback_message" id="feedback_message" class="form-control" rows="3"
-                                placeholder="지원자에게 전달할 추가 피드백 메시지를 입력하세요..."></textarea>
-                        </div>
-
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" name="notify_user" id="notify_user_reject"
-                                value="1" checked>
-                            <label class="form-check-label" for="notify_user_reject">
-                                지원자에게 거부 알림 전송
-                            </label>
-                        </div>
-
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="allow_reapply" id="allow_reapply"
-                                value="1" checked>
-                            <label class="form-check-label" for="allow_reapply">
-                                재신청 허용
-                            </label>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                        <button type="submit" class="btn btn-danger">
-                            <i class="fe fe-x me-2"></i>거부 확인
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    <!-- 승인 취소 모달 -->
+    @includeIf('jiny-partner::admin.partner-approval.partials.modal_revoke')
 
     <!-- 면접 설정 모달 -->
-    <div class="modal fade" id="interviewModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        @if ($application->application_status === 'interview')
-                            면접 일정 수정
-                        @else
-                            면접 일정 설정
-                        @endif
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <form id="interviewForm"
-                    action="{{ $application->application_status === 'interview' ? route('admin.partner.approval.interview.update', $application->id) : route('admin.partner.approval.interview.schedule', $application->id) }}"
-                    method="POST">
-                    @csrf
-                    @if ($application->application_status === 'interview')
-                        @method('PUT')
-                    @endif
-                    <div class="modal-body">
-                        <div class="alert alert-info">
-                            <i class="fe fe-calendar me-2"></i>
-                            <strong>
-                                @if ($application->application_status === 'interview')
-                                    면접 일정 수정
-                                @else
-                                    면접 일정 설정
-                                @endif
-                            </strong><br>
-                            @if ($application->application_status === 'interview')
-                                기존 면접 일정을 수정합니다. 지원자에게 변경된 일정이 통지됩니다.
-                            @else
-                                지원자에게 면접 일정이 통지됩니다.
-                            @endif
-                        </div>
-
-                        <div class="form-group mb-3">
-                            <label for="interview_date">면접 일시 <span class="text-danger">*</span></label>
-                            <input type="datetime-local" name="interview_date" id="interview_date" class="form-control"
-                                required
-                                @if ($application->interview_date) value="{{ $application->interview_date->format('Y-m-d\TH:i') }}" @endif>
-                        </div>
-
-                        <div class="form-group mb-3">
-                            <label for="interview_location">면접 장소</label>
-                            <input type="text" name="interview_location" id="interview_location" class="form-control"
-                                placeholder="면접 장소를 입력하세요 (예: 본사 회의실 A, 온라인 화상면접 등)"
-                                @if ($application->interview_feedback && isset($application->interview_feedback['location'])) value="{{ $application->interview_feedback['location'] }}" @endif>
-                        </div>
-
-                        <div class="form-group mb-3">
-                            <label for="interview_notes">면접 안내사항</label>
-                            <textarea name="interview_notes" id="interview_notes" class="form-control" rows="3"
-                                placeholder="면접에 대한 추가 안내사항을 입력하세요...">{{ $application->interview_notes ?? '' }}</textarea>
-                        </div>
-
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="notify_user"
-                                id="notify_user_interview" value="1" checked>
-                            <label class="form-check-label" for="notify_user_interview">
-                                지원자에게 면접 일정 알림 전송
-                            </label>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                        <button type="submit" class="btn btn-info">
-                            <i class="fe fe-calendar me-2"></i>면접 설정
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-
-        </div>
-
-    </div>
-
-
+    @includeIf('jiny-partner::admin.partner-approval.partials.modal_interview')
 
 
 @endsection
@@ -1285,120 +1191,6 @@
 
 @push('scripts')
     <script>
-        function showApproveModal() {
-            new bootstrap.Modal(document.getElementById('approveModal')).show();
-        }
-
-        function showRejectModal() {
-            new bootstrap.Modal(document.getElementById('rejectModal')).show();
-        }
-
-        function showInterviewModal() {
-            new bootstrap.Modal(document.getElementById('interviewModal')).show();
-        }
-
-        // 승인 폼 AJAX 처리
-        document.getElementById('approveForm').addEventListener('submit', function(e) {
-            e.preventDefault(); // 기본 폼 제출 방지
-
-            const form = this;
-            const formData = new FormData(form);
-            const submitBtn = form.querySelector('button[type="submit"]');
-            const originalBtnText = submitBtn.innerHTML;
-
-            // 버튼 상태 변경
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="spinner-border spinner-border-sm me-2"></i>처리 중...';
-
-            // AJAX 요청
-            fetch(form.action, {
-                    method: form.method,
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // 성공 메시지 표시
-                        showToast('success', data.message);
-
-                        // 모달 닫기
-                        bootstrap.Modal.getInstance(document.getElementById('approveModal')).hide();
-
-                        // 페이지 새로고침 (데이터 업데이트 반영)
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1000);
-                    } else {
-                        // 오류 메시지 표시
-                        showToast('error', data.message || '승인 처리 중 오류가 발생했습니다.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('error', '네트워크 오류가 발생했습니다.');
-                })
-                .finally(() => {
-                    // 버튼 상태 복원
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalBtnText;
-                });
-        });
-
-        // 면접 설정 폼 AJAX 처리
-        document.getElementById('interviewForm').addEventListener('submit', function(e) {
-            e.preventDefault(); // 기본 폼 제출 방지
-
-            const form = this;
-            const formData = new FormData(form);
-            const submitBtn = form.querySelector('button[type="submit"]');
-            const originalBtnText = submitBtn.innerHTML;
-
-            // 버튼 상태 변경
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="spinner-border spinner-border-sm me-2"></i>처리 중...';
-
-            // AJAX 요청
-            fetch(form.action, {
-                    method: form.method,
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // 성공 메시지 표시
-                        showToast('success', data.message);
-
-                        // 모달 닫기
-                        bootstrap.Modal.getInstance(document.getElementById('interviewModal')).hide();
-
-                        // 페이지 새로고침 (데이터 업데이트 반영)
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1000);
-                    } else {
-                        // 오류 메시지 표시
-                        showToast('error', data.message || '면접 설정 중 오류가 발생했습니다.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('error', '네트워크 오류가 발생했습니다.');
-                })
-                .finally(() => {
-                    // 버튼 상태 복원
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalBtnText;
-                });
-        });
-
         // 토스트 메시지 표시 함수
         function showToast(type, message) {
             // 기존 토스트 제거
@@ -1434,13 +1226,76 @@
             toast.show();
         }
 
+        // 승인 모달 표시 함수
+        function showApproveModal() {
+            const approveModal = document.getElementById('approveModal');
+            if (approveModal) {
+                new bootstrap.Modal(approveModal).show();
+            }
+        }
+
+        // 거부 모달 표시 함수
+        function showRejectModal() {
+            const rejectModal = document.getElementById('rejectModal');
+            if (rejectModal) {
+                new bootstrap.Modal(rejectModal).show();
+            }
+        }
+
+        // 면접 모달 표시 함수
+        function showInterviewModal() {
+            const interviewModal = document.getElementById('interviewModal');
+            if (interviewModal) {
+                new bootstrap.Modal(interviewModal).show();
+            }
+        }
+
+        // 승인 취소 모달 표시 함수
+        function showRevokeModal() {
+            const revokeModal = document.getElementById('revokeModal');
+            if (revokeModal) {
+                new bootstrap.Modal(revokeModal).show();
+            }
+        }
+
+        // 검토 상태 설정 함수
+        function setReviewingStatus() {
+            if (confirm('검토를 시작하시겠습니까?')) {
+                fetch(`/admin/partner-approval/{{ $application->id }}/set-reviewing`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('success', data.message);
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showToast('error', data.message || '상태 변경 중 오류가 발생했습니다.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('error', '네트워크 오류가 발생했습니다.');
+                });
+            }
+        }
+
         // 삭제 모달 표시 함수
         function showDeleteModal() {
-            new bootstrap.Modal(document.getElementById('deleteModal')).show();
+            const deleteModal = document.getElementById('deleteModal');
+            if (deleteModal) {
+                new bootstrap.Modal(deleteModal).show();
+            }
         }
 
         // 삭제 폼 AJAX 처리
-        document.getElementById('deleteForm').addEventListener('submit', function(e) {
+        const deleteForm = document.getElementById('deleteForm');
+        if (deleteForm) {
+            deleteForm.addEventListener('submit', function(e) {
             e.preventDefault();
 
             const form = this;
@@ -1539,6 +1394,7 @@
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = originalBtnText;
                 });
-        });
+            });
+        }
     </script>
 @endpush

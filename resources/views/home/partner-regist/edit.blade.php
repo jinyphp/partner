@@ -75,7 +75,7 @@
 
 
 
-                        <a href="{{ route('home.partner.regist.status', $application->id) }}"
+                        <a href="{{ route('home.partner.regist.status') }}"
                             class="btn btn-outline-primary">
                             <i class="bi bi-eye me-1"></i>상태 확인
                         </a>
@@ -621,7 +621,7 @@
 
                         <!-- Submit Buttons -->
                         <div class="d-flex justify-content-between align-items-center mt-4">
-                            <a href="{{ route('home.partner.regist.status', $application->id) }}"
+                            <a href="{{ route('home.partner.regist.status') }}"
                                 class="btn btn-outline-secondary px-4 py-2">
                                 <i class="bi bi-arrow-left me-2"></i>취소
                             </a>
@@ -705,7 +705,7 @@
                                 window.location.href = data.redirect;
                             } else {
                                 // 기본 리다이렉트
-                                window.location.href = '{{ route("home.partner.regist.status", $application->id) }}';
+                                window.location.href = '{{ route('home.partner.regist.status') }}';
                             }
                         } else {
                             // 에러 메시지 표시

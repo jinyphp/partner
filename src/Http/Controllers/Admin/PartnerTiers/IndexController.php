@@ -44,20 +44,25 @@ class IndexController extends Controller
             $query->where('is_active', (bool)$request->is_active);
         }
 
-        $items = $query->with(['parentTier', 'childTiers'])
+        // 수수료 타입 필터
+        if ($request->has('commission_type') && $request->commission_type) {
+            $query->where('commission_type', $request->commission_type);
+        }
+
+        $items = $query
                        ->orderBy('priority_level')
-                       ->orderBy('display_order')
+                       ->orderBy('sort_order')
                        ->paginate(20);
 
-        // 각 등급별 파트너 수 계산
-        $partnerCounts = PartnerUser::selectRaw('partner_tier_id, count(*) as partner_count')
-            ->whereIn('partner_tier_id', $items->pluck('id'))
-            ->groupBy('partner_tier_id')
-            ->pluck('partner_count', 'partner_tier_id');
+        // 각 등급별 파트너 수 계산 (실제 연결 관계에 맞게 수정)
+        $partnerCounts = [];
+        foreach ($items as $item) {
+            $partnerCounts[$item->id] = $item->partnerUsers()->count();
+        }
 
         // 전체 통계 계산
         $totalPartners = PartnerUser::count();
-        $activePartners = PartnerUser::where('status', 'active')->count();
+        $activePartners = PartnerUser::where('is_active', true)->count();
 
         return view("{$this->viewPath}.index", [
             'items' => $items,

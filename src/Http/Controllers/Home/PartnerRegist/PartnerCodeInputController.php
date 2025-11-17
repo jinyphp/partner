@@ -53,7 +53,7 @@ class PartnerCodeInputController extends PartnerController
             ->first();
 
         if ($existingApplication) {
-            return redirect()->route('home.partner.regist.status', $existingApplication->id)
+            return redirect()->route('home.partner.regist.status')
                 ->with('info', '이미 진행 중인 신청이 있습니다.');
         }
 
@@ -101,13 +101,11 @@ class PartnerCodeInputController extends PartnerController
             'ip' => $request->ip()
         ]);
 
-        // 파트너 코드 존재 여부 확인
-        $referrerPartner = PartnerUser::where('partner_code', $partnerCode)
-            ->where('status', 'active')
-            ->first();
+        // 파트너 코드 존재 여부 확인 (먼저 코드가 존재하는지 확인)
+        $partnerWithCode = PartnerUser::where('partner_code', $partnerCode)->first();
 
-        if (!$referrerPartner) {
-            Log::warning('PartnerCodeInputController: Invalid partner code provided', [
+        if (!$partnerWithCode) {
+            Log::warning('PartnerCodeInputController: Partner code does not exist', [
                 'partner_code' => $partnerCode,
                 'user_uuid' => $user->uuid
             ]);
@@ -120,6 +118,33 @@ class PartnerCodeInputController extends PartnerController
                 ]
             ], 422);
         }
+
+        // 파트너 상태 확인 (active 상태만 허용)
+        if ($partnerWithCode->status !== 'active') {
+            Log::warning('PartnerCodeInputController: Partner code exists but not active', [
+                'partner_code' => $partnerCode,
+                'partner_status' => $partnerWithCode->status,
+                'user_uuid' => $user->uuid
+            ]);
+
+            $statusMessages = [
+                'pending' => '해당 파트너 코드는 아직 승인 대기 중입니다. 관리자에게 문의해주세요.',
+                'inactive' => '해당 파트너 코드는 현재 비활성 상태입니다.',
+                'suspended' => '해당 파트너 코드는 일시 정지된 상태입니다.'
+            ];
+
+            $message = $statusMessages[$partnerWithCode->status] ?? '해당 파트너 코드는 현재 사용할 수 없는 상태입니다.';
+
+            return response()->json([
+                'success' => false,
+                'message' => $message,
+                'errors' => [
+                    'partner_code' => [$message]
+                ]
+            ], 422);
+        }
+
+        $referrerPartner = $partnerWithCode;
 
         // 추천인이 하위 파트너 모집 가능한지 확인
         if (!$referrerPartner->can_recruit) {

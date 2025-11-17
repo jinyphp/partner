@@ -11,11 +11,32 @@
             <p class="text-muted mb-0">{{ $interview->name }}님의 면접 정보</p>
         </div>
         <div>
+            <!-- 평가 관리 버튼들 -->
+            @if ($interview->interview_status === 'completed')
+                <!-- 면접 완료 후 평가 보기/수정 -->
+                <a href="{{ route('admin.partner.interview.evaluations.show', $interview->id) }}" class="btn btn-success">
+                    <i class="fe fe-star me-1"></i>평가 보기
+                </a>
+                <a href="{{ route('admin.partner.interview.evaluations.edit', $interview->id) }}" class="btn btn-outline-success">
+                    <i class="fe fe-edit-2 me-1"></i>평가 수정
+                </a>
+            @endif
+
+            <!-- 모든 상태에서 평가 작성 가능 -->
+            <a href="{{ route('admin.partner.interview.evaluations.create', ['interview_id' => $interview->id]) }}" class="btn btn-warning">
+                <i class="fe fe-edit me-1"></i>평가 작성
+            </a>
+
             @if(!in_array($interview->interview_status, ['completed']))
                 <a href="{{ route('admin.partner.interview.edit', $interview->id) }}" class="btn btn-primary">
                     <i class="fe fe-edit me-1"></i>수정
                 </a>
             @endif
+
+            <button type="button" class="btn btn-danger me-2" onclick="deleteInterview({{ $interview->id }})">
+                <i class="fe fe-trash-2 me-1"></i>삭제
+            </button>
+
             <a href="{{ route('admin.partner.interview.index') }}" class="btn btn-secondary">
                 <i class="fe fe-arrow-left me-1"></i>목록
             </a>
@@ -197,7 +218,7 @@
                     </div>
                     @if($interview->application)
                         <div class="mt-3">
-                            <a href="{{ route('admin.partner-approval.show', $interview->application->id) }}" class="btn btn-outline-primary btn-sm">
+                            <a href="{{ route('admin.partner.approval.show', $interview->application->id) }}" class="btn btn-outline-primary btn-sm">
                                 <i class="fe fe-file-text me-1"></i>신청서 보기
                             </a>
                         </div>
@@ -400,4 +421,162 @@
         </div>
     </div>
 </div>
+
+<!-- 삭제 확인 모달 -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">면접 삭제 확인</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning d-flex align-items-center" role="alert">
+                    <i class="fe fe-alert-triangle me-2"></i>
+                    <div>
+                        <strong>주의!</strong> 이 작업은 되돌릴 수 없습니다.
+                    </div>
+                </div>
+                <p>정말로 이 면접을 삭제하시겠습니까?</p>
+                <div class="bg-light p-3 rounded">
+                    <div class="small">
+                        <strong>면접 정보:</strong><br>
+                        • 지원자: {{ $interview->name }}<br>
+                        • 면접일시: {{ $interview->scheduled_at ? $interview->scheduled_at->format('Y-m-d H:i') : '미정' }}<br>
+                        • 상태: {{ $interview->status_label }}
+                    </div>
+                </div>
+                <p class="text-muted small mt-2">
+                    삭제된 면접 정보는 복구할 수 없으며, 관련된 평가 데이터에 영향을 줄 수 있습니다.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fe fe-x me-1"></i>취소
+                </button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fe fe-trash-2 me-1"></i>삭제 확인
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
+
+@push('scripts')
+<script>
+// 면접 삭제 확인
+function deleteInterview(id) {
+    console.log('Delete interview button clicked for ID:', id);
+
+    try {
+        const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        const form = document.getElementById('deleteForm');
+
+        // 삭제 URL 설정
+        form.action = `{{ route('admin.partner.interview.index') }}/${id}`;
+
+        console.log('Form action set to:', form.action);
+        modal.show();
+    } catch (error) {
+        console.error('Error in deleteInterview:', error);
+        alert('삭제 기능에서 오류가 발생했습니다: ' + error.message);
+    }
+}
+
+// 폼 제출 시 AJAX 처리
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteForm = document.getElementById('deleteForm');
+    if (deleteForm) {
+        deleteForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
+
+            // 버튼 비활성화 및 로딩 표시
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fe fe-loader me-1"></i>삭제 중...';
+
+            // AJAX 요청
+            fetch(this.action, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 성공 알림 표시
+                    showToast('success', data.message || '면접이 성공적으로 삭제되었습니다.');
+
+                    // 모달 닫기
+                    bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+
+                    // 1.5초 후 목록 페이지로 이동
+                    setTimeout(() => {
+                        window.location.href = data.redirect || '{{ route("admin.partner.interview.index") }}';
+                    }, 1500);
+                } else {
+                    showToast('error', data.message || '삭제 처리 중 오류가 발생했습니다.');
+
+                    // 버튼 상태 복원
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('error', '네트워크 오류가 발생했습니다.');
+
+                // 버튼 상태 복원
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalText;
+            });
+        });
+    }
+});
+
+// 토스트 메시지 표시 함수
+function showToast(type, message) {
+    // 기존 토스트 제거
+    const existingToast = document.querySelector('.toast-container .toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+
+    // 토스트 컨테이너가 없으면 생성
+    let toastContainer = document.querySelector('.toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        document.body.appendChild(toastContainer);
+    }
+
+    // 토스트 HTML 생성
+    const toastHtml = `
+        <div class="toast align-items-center text-bg-${type === 'success' ? 'success' : 'danger'} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fe fe-${type === 'success' ? 'check' : 'x'} me-2"></i>
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+
+    toastContainer.innerHTML = toastHtml;
+    const toastElement = toastContainer.querySelector('.toast');
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+}
+</script>
+@endpush

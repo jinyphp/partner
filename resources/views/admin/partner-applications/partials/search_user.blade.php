@@ -154,7 +154,7 @@ async function searchUsers() {
             limit: 20
         });
 
-        const response = await fetch(`/api/partner/users/search?${params}`, {
+        const response = await fetch(`/api/partner/v1/users/search?${params}`, {
             method: 'GET',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',

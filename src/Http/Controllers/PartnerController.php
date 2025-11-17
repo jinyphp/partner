@@ -133,7 +133,7 @@ class PartnerController extends HomeController
             // 신청했지만 아직 승인되지 않은 경우 → 상태 페이지로 안내
             return [
                 'success' => false,
-                'redirect' => redirect()->route('home.partner.regist.status', $partnerApplication->id)
+                'redirect' => redirect()->route('home.partner.regist.status')
                     ->with('info', '파트너 신청이 아직 처리 중입니다.'),
                 'user' => $user,
                 'partner' => null

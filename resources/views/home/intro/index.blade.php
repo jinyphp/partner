@@ -38,7 +38,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h2 class="mb-3">파트너 가입</h2>
-                        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); max-width: 300px;">
+                        {{-- <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); max-width: 300px;">
                             <div class="card-body p-3">
                                 <div class="d-flex align-items-center">
                                     <div class="me-3">
@@ -52,7 +52,7 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </div> --}}
                     </div>
                     <div>
                         <a href="/home" class="btn btn-outline-secondary">

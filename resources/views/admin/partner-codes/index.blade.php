@@ -2,10 +2,113 @@
 
 @section('title', $pageTitle)
 
+@push('styles')
+<style>
+/* 통계 카드 호버 효과 */
+.stats-card {
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.stats-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.08) !important;
+    background-color: #ffffff !important;
+}
+
+/* 카드 내 아이콘 애니메이션 */
+.stats-card:hover .stats-icon {
+    transform: scale(1.05);
+}
+
+.stats-icon {
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+/* 숫자 카운터 애니메이션 */
+.counter {
+    display: inline-block;
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* 카드 기본 스타일 */
+.stats-card .card-body {
+    min-height: 5rem;
+}
+
+/* 아이콘 색상 테마 */
+.icon-purple { background-color: #6366f1 !important; }
+.icon-amber { background-color: #f59e0b !important; }
+.icon-cyan { background-color: #06b6d4 !important; }
+.icon-emerald { background-color: #10b981 !important; }
+
+/* 반응형 개선 */
+@media (max-width: 768px) {
+    .stats-card .card-body {
+        padding: 1rem !important;
+        min-height: auto;
+    }
+
+    .stats-icon {
+        width: 2.5rem !important;
+        height: 2.5rem !important;
+    }
+
+    .counter {
+        font-size: 1.5rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .stats-card .card-body {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .stats-icon {
+        margin-bottom: 0.75rem !important;
+        margin-right: 0 !important;
+    }
+}
+
+/* 부드러운 페이드인 애니메이션 */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.stats-card-animate {
+    animation: fadeInUp 0.6s ease forwards;
+}
+
+/* 텍스트 스타일 개선 */
+.stats-card h4 {
+    font-weight: 700;
+    letter-spacing: -0.025em;
+}
+
+.stats-card p {
+    color: #6b7280;
+}
+
+.stats-card .text-muted {
+    color: #9ca3af !important;
+}
+</style>
+@endpush
+
 @section('content')
 <div class="container-fluid">
+
     <!-- 헤더 -->
-    <div class="row mb-3">
+    <section class="row mb-3">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -25,46 +128,98 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- 통계 카드 -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-white text-center">
-                <div class="card-body">
-                    <div class="h4 mb-0 text-primary">{{ number_format($statistics['total_partners']) }}</div>
-                    <small class="text-muted">전체 파트너</small>
+    <section class="row g-3 mb-4">
+        <!-- 전체 파트너 카드 -->
+        <div class="col-lg-3 col-md-6">
+            <div class="card border-0 stats-card h-100 position-relative">
+                <div class="card-body d-flex align-items-center py-3 px-4">
+                    <!-- 아이콘 -->
+                    <div class="d-flex align-items-center justify-content-center rounded-circle me-3 stats-icon"
+                         style="width: 3rem; height: 3rem; background-color: #6366f1; color: white;">
+                        <i class="bi bi-person-lines-fill fs-5"></i>
+                    </div>
+                    <!-- 내용 -->
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-baseline">
+                            <h4 class="fw-bold text-dark mb-0 me-1 counter" data-target="{{ $statistics['total_partners'] }}">{{ number_format($statistics['total_partners']) }}</h4>
+                            <span class="text-muted fw-medium" style="font-size: 0.875rem;">/</span>
+                            <span class="text-muted fw-medium ms-1" style="font-size: 0.875rem;">전체</span>
+                        </div>
+                        <p class="text-muted mb-0 fw-medium" style="font-size: 0.875rem;">파트너 현황</p>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-white text-center">
-                <div class="card-body">
-                    <div class="h4 mb-0 text-success">{{ number_format($statistics['with_codes']) }}</div>
-                    <small class="text-muted">코드 보유</small>
+
+        <!-- 총 커미션 카드 -->
+        <div class="col-lg-3 col-md-6">
+            <div class="card border-0  stats-card h-100 position-relative">
+                <div class="card-body d-flex align-items-center py-3 px-4">
+                    <!-- 아이콘 -->
+                    <div class="d-flex align-items-center justify-content-center rounded-circle me-3 stats-icon"
+                         style="width: 3rem; height: 3rem; background-color: #f59e0b; color: white;">
+                        <i class="bi bi-currency-dollar fs-5"></i>
+                    </div>
+                    <!-- 내용 -->
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-baseline">
+                            <h4 class="fw-bold text-dark mb-0 counter" data-target="0">0</h4>
+                            <span class="text-muted fw-medium ms-1" style="font-size: 0.875rem;">원</span>
+                        </div>
+                        <p class="text-muted mb-0 fw-medium" style="font-size: 0.875rem;">총 커미션</p>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-white text-center">
-                <div class="card-body">
-                    <div class="h4 mb-0 text-warning">{{ number_format($statistics['without_codes']) }}</div>
-                    <small class="text-muted">코드 없음</small>
+
+        <!-- 총 매출 카드 -->
+        <div class="col-lg-3 col-md-6">
+            <div class="card border-0 stats-card h-100 position-relative">
+                <div class="card-body d-flex align-items-center py-3 px-4">
+                    <!-- 아이콘 -->
+                    <div class="d-flex align-items-center justify-content-center rounded-circle me-3 stats-icon"
+                         style="width: 3rem; height: 3rem; background-color: #06b6d4; color: white;">
+                        <i class="bi bi-graph-up-arrow fs-5"></i>
+                    </div>
+                    <!-- 내용 -->
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-baseline">
+                            <h4 class="fw-bold text-dark mb-0 counter" data-target="0">0</h4>
+                            <span class="text-muted fw-medium ms-1" style="font-size: 0.875rem;">원</span>
+                        </div>
+                        <p class="text-muted mb-0 fw-medium" style="font-size: 0.875rem;">총 매출</p>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-white text-center">
-                <div class="card-body">
-                    <div class="h4 mb-0 text-info">{{ $statistics['code_usage_rate'] }}%</div>
-                    <small class="text-muted">코드 보유율</small>
+
+        <!-- 평균 점수 카드 -->
+        <div class="col-lg-3 col-md-6">
+            <div class="card border-0  stats-card h-100 position-relative">
+                <div class="card-body d-flex align-items-center py-3 px-4">
+                    <!-- 아이콘 -->
+                    <div class="d-flex align-items-center justify-content-center rounded-circle me-3 stats-icon"
+                         style="width: 3rem; height: 3rem; background-color: #10b981; color: white;">
+                        <i class="bi bi-star-fill fs-5"></i>
+                    </div>
+                    <!-- 내용 -->
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-baseline">
+                            <h4 class="fw-bold text-dark mb-0 counter" data-target="{{ $statistics['code_usage_rate'] }}">{{ $statistics['code_usage_rate'] }}</h4>
+                            <span class="text-muted fw-medium ms-1" style="font-size: 0.875rem;">%</span>
+                        </div>
+                        <p class="text-muted mb-0 fw-medium" style="font-size: 0.875rem;">평균 점수</p>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- 필터 및 검색 -->
-    <div class="row mb-3">
+    <section class="row mb-3">
         <div class="col-12">
             <div class="card">
                 <div class="card-body">
@@ -96,10 +251,10 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- 파트너 코드 목록 -->
-    <div class="row">
+    <section class="row">
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
@@ -121,7 +276,7 @@
                                     <th width="150">등급</th>
                                     <th width="200">추천 코드</th>
                                     <th width="100">상태</th>
-                                    <th width="150">작업</th>
+                                    <th width="200">작업</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -215,7 +370,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 </div>
 
 <!-- 대량 생성 모달 -->
@@ -258,6 +413,7 @@
 </div>
 
 <script>
+console.log('Partner Codes Script Loaded - Version: {{ date("Y-m-d H:i:s") }}');
 // 전체 선택/해제
 document.getElementById('selectAll').addEventListener('change', function() {
     const checkboxes = document.querySelectorAll('.partner-checkbox');
@@ -296,22 +452,35 @@ function generateCode(partnerId) {
         }
 
         // AJAX 요청 구현
-        fetch(`/admin/partner/users/${partnerId}/partner-code/generate`, {
+        fetch(`/api/partner/code/generate/${partnerId}`, {
             method: 'POST',
+            credentials: 'same-origin',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify({
                 email: email
             })
-        }).then(response => response.json())
+        }).then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             console.log('Response:', data);
             if (data.success) {
-                alert('코드가 생성되었습니다: ' + data.data.partner_code);
+                const partnerCode = data.data ? data.data.partner_code : data.partner_code;
+                alert('코드가 생성되었습니다: ' + partnerCode);
                 // 동적으로 UI 업데이트
-                updatePartnerRowUI(partnerId, data.data.partner_code);
+                updatePartnerRowUI(partnerId, partnerCode);
+
+                // 1초 후 페이지 리로드 (최신 상태 반영)
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
             } else {
                 alert('오류가 발생했습니다: ' + data.message);
                 // 버튼 원상복구
@@ -322,7 +491,7 @@ function generateCode(partnerId) {
             }
         }).catch(error => {
             console.error('Error:', error);
-            alert('네트워크 오류가 발생했습니다.');
+            alert('네트워크 오류가 발생했습니다: ' + error.message);
             // 버튼 원상복구
             if (generateBtn) {
                 generateBtn.disabled = false;
@@ -344,46 +513,194 @@ function regenerateCode(partnerId) {
 // 개별 코드 삭제
 function deleteCode(partnerId, showConfirm = true) {
     if (!showConfirm || confirm('이 파트너의 추천 코드를 삭제하시겠습니까?')) {
-        fetch(`/admin/partner/users/${partnerId}/partner-code/delete`, {
+        fetch(`/api/partner/code/delete/${partnerId}`, {
             method: 'DELETE',
+            credentials: 'same-origin',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             }
-        }).then(response => response.json())
+        }).then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 if (showConfirm) {
                     alert('코드가 삭제되었습니다.');
                     // 동적으로 UI 업데이트
                     updatePartnerRowUI(partnerId, null);
+
+                    // 1초 후 페이지 리로드 (최신 상태 반영)
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
                 }
             } else {
                 alert('오류가 발생했습니다: ' + data.message);
             }
+        }).catch(error => {
+            console.error('Error:', error);
+            alert('네트워크 오류가 발생했습니다: ' + error.message);
         });
     }
 }
 
 // 모든 파트너 코드 생성
-function generateAllCodes() {
-    if (confirm('모든 파트너의 추천 코드를 생성하시겠습니까? 이 작업은 시간이 소요될 수 있습니다.')) {
-        // 대량 생성 API 호출
-        alert('기능 구현 중입니다.');
+async function generateAllCodes() {
+    if (!confirm('모든 파트너의 추천 코드를 생성하시겠습니까? 이 작업은 시간이 소요될 수 있습니다.')) {
+        return;
+    }
+
+    const btn = document.querySelector('.btn-primary');
+    const originalText = btn.innerHTML;
+
+    try {
+        // 버튼 비활성화
+        btn.disabled = true;
+        btn.innerHTML = '<i class="spinner-border spinner-border-sm me-1"></i>생성 중...';
+
+        // 코드가 없는 모든 파트너 ID 수집
+        const partnerIds = [];
+        document.querySelectorAll('.partner-checkbox').forEach(checkbox => {
+            const row = checkbox.closest('tr');
+            const codeCell = row.querySelector('td:nth-child(4)');
+            // 코드가 없는 파트너만 추가 (미생성 상태)
+            if (codeCell.textContent.includes('코드 없음')) {
+                partnerIds.push(parseInt(checkbox.value));
+            }
+        });
+
+        if (partnerIds.length === 0) {
+            alert('생성할 파트너 코드가 없습니다. 모든 파트너가 이미 코드를 보유하고 있습니다.');
+            return;
+        }
+
+        const response = await fetch('/admin/partner/codes/bulk-generate', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                partner_ids: partnerIds
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert(`모든 파트너 코드 생성 완료!\n성공: ${data.data.success_count}개\n실패: ${data.data.fail_count}개`);
+
+            // 1초 후 페이지 리로드
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            throw new Error(data.message || '모든 파트너 코드 생성에 실패했습니다.');
+        }
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('오류가 발생했습니다: ' + error.message);
+    } finally {
+        // 버튼 복원
+        btn.disabled = false;
+        btn.innerHTML = originalText;
     }
 }
 
 // 선택된 파트너 대량 삭제
-function bulkDelete() {
+async function bulkDelete() {
     const selected = document.querySelectorAll('.partner-checkbox:checked');
     if (selected.length === 0) {
         alert('삭제할 파트너를 선택해주세요.');
         return;
     }
 
-    if (confirm(`선택된 ${selected.length}명의 파트너 코드를 삭제하시겠습니까?`)) {
-        // 대량 삭제 API 호출
-        alert('기능 구현 중입니다.');
+    // 선택된 파트너 중 코드가 있는 파트너만 필터링
+    const partnerIds = [];
+    const partnerNames = [];
+
+    selected.forEach(checkbox => {
+        const row = checkbox.closest('tr');
+        const codeCell = row.querySelector('td:nth-child(4)');
+        const nameCell = row.querySelector('td:nth-child(2) .fw-medium');
+
+        // 코드가 있는 파트너만 추가
+        if (!codeCell.textContent.includes('코드 없음')) {
+            partnerIds.push(parseInt(checkbox.value));
+            partnerNames.push(nameCell.textContent);
+        }
+    });
+
+    if (partnerIds.length === 0) {
+        alert('선택된 파트너 중 삭제할 코드가 없습니다.');
+        return;
+    }
+
+    if (!confirm(`선택된 ${partnerIds.length}명의 파트너 코드를 삭제하시겠습니까?\n\n삭제 대상:\n${partnerNames.join('\n')}`)) {
+        return;
+    }
+
+    const btn = document.querySelector('.btn-outline-danger');
+    const originalText = btn.innerHTML;
+
+    try {
+        // 버튼 비활성화
+        btn.disabled = true;
+        btn.innerHTML = '<i class="spinner-border spinner-border-sm me-1"></i>삭제 중...';
+
+        const response = await fetch('/admin/partner/codes/bulk-delete', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                partner_ids: partnerIds
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert(`선택된 파트너 코드 삭제 완료!\n성공: ${data.data.success_count}개\n실패: ${data.data.fail_count}개`);
+
+            // 체크박스 초기화
+            document.getElementById('selectAll').checked = false;
+            selected.forEach(checkbox => checkbox.checked = false);
+
+            // 1초 후 페이지 리로드
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            throw new Error(data.message || '대량 삭제에 실패했습니다.');
+        }
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('오류가 발생했습니다: ' + error.message);
+    } finally {
+        // 버튼 복원
+        btn.disabled = false;
+        btn.innerHTML = originalText;
     }
 }
 
@@ -441,14 +758,250 @@ function updatePartnerRowUI(partnerId, partnerCode) {
 }
 
 // 대량 생성 폼 제출
-document.getElementById('bulkGenerateForm').addEventListener('submit', function(e) {
+document.getElementById('bulkGenerateForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
     const formData = new FormData(this);
-    alert('대량 생성 기능을 구현 중입니다.');
+    const target = formData.get('target');
+    const prefix = formData.get('prefix');
 
-    // AJAX 요청으로 대량 생성 처리
-    // 실제 구현 시에는 progress bar나 로딩 상태 표시 필요
+    if (!target) {
+        alert('생성 대상을 선택해주세요.');
+        return;
+    }
+
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+
+    try {
+        // 버튼 비활성화
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="spinner-border spinner-border-sm me-1"></i>처리 중...';
+
+        // 조건에 따라 파트너 ID 수집
+        let partnerIds = [];
+
+        if (target === 'without_codes') {
+            // 코드가 없는 파트너만
+            document.querySelectorAll('.partner-checkbox').forEach(checkbox => {
+                const row = checkbox.closest('tr');
+                const codeCell = row.querySelector('td:nth-child(4)');
+                if (codeCell.textContent.includes('코드 없음')) {
+                    partnerIds.push(parseInt(checkbox.value));
+                }
+            });
+        } else if (target === 'all') {
+            // 모든 파트너
+            document.querySelectorAll('.partner-checkbox').forEach(checkbox => {
+                partnerIds.push(parseInt(checkbox.value));
+            });
+        } else if (target === 'active_only') {
+            // 활성 파트너만 (활성 상태이면서 코드가 없는 파트너)
+            document.querySelectorAll('.partner-checkbox').forEach(checkbox => {
+                const row = checkbox.closest('tr');
+                const statusCell = row.querySelector('td:nth-child(5)');
+                const codeCell = row.querySelector('td:nth-child(4)');
+                if (statusCell.textContent.includes('활성') && codeCell.textContent.includes('코드 없음')) {
+                    partnerIds.push(parseInt(checkbox.value));
+                }
+            });
+        }
+
+        if (partnerIds.length === 0) {
+            alert('선택한 조건에 해당하는 파트너가 없습니다.');
+            return;
+        }
+
+        if (!confirm(`${partnerIds.length}명의 파트너 코드를 생성하시겠습니까?`)) {
+            return;
+        }
+
+        const response = await fetch('/admin/partner/codes/bulk-generate', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                partner_ids: partnerIds,
+                prefix: prefix || null
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert(`대량 코드 생성 완료!\n성공: ${data.data.success_count}개\n실패: ${data.data.fail_count}개`);
+
+            // 모달 닫기
+            const modal = bootstrap.Modal.getInstance(document.getElementById('bulkGenerateModal'));
+            modal.hide();
+
+            // 폼 리셋
+            this.reset();
+
+            // 1초 후 페이지 리로드
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            throw new Error(data.message || '대량 생성에 실패했습니다.');
+        }
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('오류가 발생했습니다: ' + error.message);
+    } finally {
+        // 버튼 복원
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }
+});
+
+// 통계 카드 애니메이션 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    // 카운터 애니메이션
+    function animateCounters() {
+        const counters = document.querySelectorAll('.counter');
+
+        counters.forEach(counter => {
+            const target = parseInt(counter.dataset.target) || parseInt(counter.textContent.replace(/[^\d]/g, ''));
+            const current = parseInt(counter.textContent.replace(/[^\d]/g, '')) || 0;
+
+            if (target && target !== current) {
+                const increment = target / 50; // 50 스텝으로 애니메이션
+                let currentValue = 0;
+
+                const timer = setInterval(() => {
+                    currentValue += increment;
+
+                    if (currentValue >= target) {
+                        if (counter.textContent.includes('%')) {
+                            counter.textContent = target + '%';
+                        } else {
+                            counter.textContent = target.toLocaleString();
+                        }
+                        clearInterval(timer);
+                    } else {
+                        if (counter.textContent.includes('%')) {
+                            counter.textContent = Math.ceil(currentValue) + '%';
+                        } else {
+                            counter.textContent = Math.ceil(currentValue).toLocaleString();
+                        }
+                    }
+                }, 30); // 30ms 간격
+            }
+        });
+    }
+
+    // Intersection Observer로 스크롤 애니메이션
+    function setupScrollAnimations() {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+
+                    // 카운터 애니메이션 시작
+                    if (entry.target.classList.contains('stats-card')) {
+                        setTimeout(() => {
+                            const counters = entry.target.querySelectorAll('.counter');
+                            counters.forEach(counter => {
+                                const target = parseInt(counter.dataset.target) || parseInt(counter.textContent.replace(/[^\d]/g, ''));
+                                animateCounter(counter, target);
+                            });
+                        }, 200);
+                    }
+                }
+            });
+        }, {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        });
+
+        // 통계 카드들 초기 스타일 설정 및 관찰 시작
+        document.querySelectorAll('.stats-card').forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px)';
+            card.style.transition = `all 0.6s ease ${index * 0.1}s`;
+            observer.observe(card);
+        });
+    }
+
+    // 개별 카운터 애니메이션
+    function animateCounter(element, target) {
+        const isPercentage = element.textContent.includes('%');
+        const duration = 1500; // 1.5초
+        const startTime = performance.now();
+
+        function update(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+
+            // easeOutCubic 이징 함수
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            const currentValue = Math.floor(easeProgress * target);
+
+            if (isPercentage) {
+                element.textContent = currentValue + '%';
+            } else {
+                element.textContent = currentValue.toLocaleString();
+            }
+
+            if (progress < 1) {
+                requestAnimationFrame(update);
+            } else {
+                if (isPercentage) {
+                    element.textContent = target + '%';
+                } else {
+                    element.textContent = target.toLocaleString();
+                }
+            }
+        }
+
+        requestAnimationFrame(update);
+    }
+
+    // 프로그레스 바 애니메이션
+    function animateProgressBars() {
+        const progressBars = document.querySelectorAll('.progress-bar-animated');
+        progressBars.forEach((bar, index) => {
+            setTimeout(() => {
+                bar.style.width = bar.getAttribute('aria-valuenow') + '%';
+            }, index * 200);
+        });
+    }
+
+    // 툴팁 초기화 (Bootstrap이 로드된 경우)
+    function initializeTooltips() {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        }
+    }
+
+    // 모든 애니메이션 초기화
+    setupScrollAnimations();
+    animateProgressBars();
+    initializeTooltips();
+
+    // 카드 클릭 시 부드러운 효과
+    document.querySelectorAll('.stats-card').forEach(card => {
+        card.addEventListener('click', function() {
+            this.style.transform = 'scale(0.98)';
+            setTimeout(() => {
+                this.style.transform = '';
+            }, 150);
+        });
+    });
 });
 </script>
 @endsection

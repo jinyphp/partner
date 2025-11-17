@@ -79,6 +79,15 @@ Route::middleware(['web', 'admin'])->prefix('admin')->name('admin.')->group(func
             Route::get('/', PartnerTypeIndexController::class)->name('index');
             Route::get('/create', PartnerTypeCreateController::class)->name('create');
             Route::post('/', PartnerTypeStoreController::class)->name('store');
+
+            // 파트너 타입별 실적 관리 (Partner Type Target Management)
+            // 주의: 구체적인 경로를 먼저 정의해야 {type} 매개변수와 충돌하지 않음
+            Route::get('/target', \Jiny\Partner\Http\Controllers\Admin\PartnerTypeTarget\IndexController::class)->name('target');
+            Route::get('/target/analytics', \Jiny\Partner\Http\Controllers\Admin\PartnerTypeTarget\AnalyticsController::class)->name('target.analytics');
+            Route::get('/target/{type_id}/detail', \Jiny\Partner\Http\Controllers\Admin\PartnerTypeTarget\DetailController::class)->name('target.detail');
+            Route::post('/target/{type_id}/update-goal', \Jiny\Partner\Http\Controllers\Admin\PartnerTypeTarget\UpdateGoalController::class)->name('target.update-goal');
+
+            // {type} 매개변수 라우트는 마지막에 배치 (와일드카드 라우트)
             Route::get('/{type}', PartnerTypeShowController::class)->name('show');
             Route::get('/{type}/edit', PartnerTypeEditController::class)->name('edit');
             Route::put('/{type}', PartnerTypeUpdateController::class)->name('update');
@@ -105,9 +114,7 @@ Route::middleware(['web', 'admin'])->prefix('admin')->name('admin.')->group(func
             Route::get('/search/user-info', [PartnerUsersSearchController::class, 'getUserInfo'])->name('search.user-info');
             Route::get('/search/user-tables', [PartnerUsersSearchController::class, 'getUserTables'])->name('search.user-tables');
 
-            // 파트너 코드 관리 (웹 라우트)
-            Route::post('/{id}/partner-code/generate', [\Jiny\Partner\Http\Controllers\Admin\PartnerUsers\PartnerCodeController::class, 'generate'])->name('partner-code.generate');
-            Route::delete('/{id}/partner-code/delete', [\Jiny\Partner\Http\Controllers\Admin\PartnerUsers\PartnerCodeController::class, 'delete'])->name('partner-code.delete');
+            // 파트너 코드 관리는 API 경로로 이동됨 (/api/partner/code/)
         });
 
         // 파트너 코드 전체 관리
@@ -143,6 +150,26 @@ Route::middleware(['web', 'admin'])->prefix('admin')->name('admin.')->group(func
             });
         });
         */
+
+        // ====================================================================
+        // 파트너 동적 목표 관리 (Partner Dynamic Targets Management)
+        // ====================================================================
+        Route::prefix('targets')->name('targets.')->group(function () {
+            // 기본 CRUD
+            Route::get('/', [\Jiny\Partner\Http\Controllers\Admin\PartnerDynamicTargetsController::class, 'index'])->name('index');
+            Route::get('/create', [\Jiny\Partner\Http\Controllers\Admin\PartnerDynamicTargetsController::class, 'create'])->name('create');
+            Route::post('/', [\Jiny\Partner\Http\Controllers\Admin\PartnerDynamicTargetsController::class, 'store'])->name('store');
+            Route::get('/{target}', [\Jiny\Partner\Http\Controllers\Admin\PartnerDynamicTargetsController::class, 'show'])->name('show');
+            Route::get('/{target}/edit', [\Jiny\Partner\Http\Controllers\Admin\PartnerDynamicTargetsController::class, 'edit'])->name('edit');
+            Route::put('/{target}', [\Jiny\Partner\Http\Controllers\Admin\PartnerDynamicTargetsController::class, 'update'])->name('update');
+            Route::delete('/{target}', [\Jiny\Partner\Http\Controllers\Admin\PartnerDynamicTargetsController::class, 'destroy'])->name('destroy');
+
+            // 목표 관리 작업
+            Route::prefix('{target}')->group(function () {
+                Route::post('/approve', [\Jiny\Partner\Http\Controllers\Admin\PartnerDynamicTargetsController::class, 'approve'])->name('approve');
+                Route::post('/activate', [\Jiny\Partner\Http\Controllers\Admin\PartnerDynamicTargetsController::class, 'activate'])->name('activate');
+            });
+        });
 
         // ====================================================================
         // 파트너 매출 관리 (Partner Sales Management)
@@ -269,16 +296,32 @@ Route::middleware(['web', 'admin'])->prefix('admin')->name('admin.')->group(func
             Route::post('/{id}/review', \Jiny\Partner\Http\Controllers\Admin\PartnerApproval\ReviewController::class)->name('review');
             Route::post('/{id}/approve', \Jiny\Partner\Http\Controllers\Admin\PartnerApproval\ApproveController::class)->name('approve');
             Route::post('/{id}/reject', \Jiny\Partner\Http\Controllers\Admin\PartnerApproval\RejectController::class)->name('reject');
+            Route::post('/{id}/revoke', \Jiny\Partner\Http\Controllers\Admin\PartnerApproval\RevokeController::class)->name('revoke');
             Route::put('/{id}/status', \Jiny\Partner\Http\Controllers\Admin\PartnerApproval\StatusController::class)->name('status');
 
             // 면접 관리
-            Route::post('/{id}/interview/schedule', \Jiny\Partner\Http\Controllers\Admin\PartnerApproval\ScheduleInterviewController::class)->name('interview.schedule');
-            Route::put('/{id}/interview/update', \Jiny\Partner\Http\Controllers\Admin\PartnerApproval\UpdateInterviewController::class)->name('interview.update');
+            Route::post('/{id}/interview/schedule', \Jiny\Partner\Http\Controllers\Admin\PartnerApproval\InterviewController::class)->name('interview.schedule');
+            Route::put('/{id}/interview/update', [\Jiny\Partner\Http\Controllers\Admin\PartnerApproval\InterviewController::class, 'update'])->name('interview.update');
             Route::post('/{id}/interview/complete', \Jiny\Partner\Http\Controllers\Admin\PartnerApproval\CompleteInterviewController::class)->name('interview.complete');
 
             // 대량 처리
             Route::post('/bulk-approve', \Jiny\Partner\Http\Controllers\Admin\PartnerApproval\BulkApproveController::class)->name('bulk-approve');
             Route::post('/bulk-reject', \Jiny\Partner\Http\Controllers\Admin\PartnerApproval\BulkRejectController::class)->name('bulk-reject');
+        });
+
+        // ====================================================================
+        // 파트너 면접 평가 관리 (Partner Interview Evaluations Management)
+        // 주의: interview/{id} 라우트보다 먼저 정의해야 함 (라우트 충돌 방지)
+        // ====================================================================
+        Route::prefix('interview/evaluations')->name('interview.evaluations.')->group(function () {
+            // 기본 CRUD
+            Route::get('/', [\Jiny\Partner\Http\Controllers\Admin\PartnerInterviewEvaluationsController::class, 'index'])->name('index');
+            Route::get('/create', [\Jiny\Partner\Http\Controllers\Admin\PartnerInterviewEvaluationsController::class, 'create'])->name('create');
+            Route::post('/', [\Jiny\Partner\Http\Controllers\Admin\PartnerInterviewEvaluationsController::class, 'store'])->name('store');
+            Route::get('/{id}', [\Jiny\Partner\Http\Controllers\Admin\PartnerInterviewEvaluationsController::class, 'show'])->name('show');
+            Route::get('/{id}/edit', [\Jiny\Partner\Http\Controllers\Admin\PartnerInterviewEvaluationsController::class, 'edit'])->name('edit');
+            Route::put('/{id}', [\Jiny\Partner\Http\Controllers\Admin\PartnerInterviewEvaluationsController::class, 'update'])->name('update');
+            Route::delete('/{id}', [\Jiny\Partner\Http\Controllers\Admin\PartnerInterviewEvaluationsController::class, 'destroy'])->name('destroy');
         });
 
         // ====================================================================
@@ -316,6 +359,47 @@ Route::middleware(['web', 'admin'])->prefix('admin')->name('admin.')->group(func
         });
 
         // ====================================================================
+        // 파트너 활동 로그 관리 (Partner Activity Logs Management)
+        // ====================================================================
+        Route::prefix('activity/logs')->name('activity.logs.')->group(function () {
+            // 기본 CRUD
+            Route::get('/', [\Jiny\Partner\Http\Controllers\Admin\PartnerActivityLogsController::class, 'index'])->name('index');
+            Route::get('/{id}', [\Jiny\Partner\Http\Controllers\Admin\PartnerActivityLogsController::class, 'show'])->name('show');
+            Route::post('/', [\Jiny\Partner\Http\Controllers\Admin\PartnerActivityLogsController::class, 'store'])->name('store');
+
+            // 특정 파트너/신청서별 로그 조회
+            Route::get('/partner/{partnerId}', [\Jiny\Partner\Http\Controllers\Admin\PartnerActivityLogsController::class, 'getPartnerLogs'])->name('partner');
+            Route::get('/application/{applicationId}', [\Jiny\Partner\Http\Controllers\Admin\PartnerActivityLogsController::class, 'getApplicationLogs'])->name('application');
+
+            // 통계 및 분석
+            Route::get('/statistics', [\Jiny\Partner\Http\Controllers\Admin\PartnerActivityLogsController::class, 'stats'])->name('stats');
+            Route::get('/export', [\Jiny\Partner\Http\Controllers\Admin\PartnerActivityLogsController::class, 'export'])->name('export');
+        });
+
+        // ====================================================================
+        // 파트너 알림 관리 (Partner Notifications Management)
+        // ====================================================================
+        Route::prefix('notifications')->name('notifications.')->group(function () {
+            // 기본 CRUD
+            Route::get('/', [\Jiny\Partner\Http\Controllers\Admin\PartnerNotificationsController::class, 'index'])->name('index');
+            Route::get('/create', [\Jiny\Partner\Http\Controllers\Admin\PartnerNotificationsController::class, 'create'])->name('create');
+            Route::post('/', [\Jiny\Partner\Http\Controllers\Admin\PartnerNotificationsController::class, 'store'])->name('store');
+            Route::get('/{id}', [\Jiny\Partner\Http\Controllers\Admin\PartnerNotificationsController::class, 'show'])->name('show');
+            Route::delete('/{id}', [\Jiny\Partner\Http\Controllers\Admin\PartnerNotificationsController::class, 'destroy'])->name('destroy');
+
+            // 읽음 처리
+            Route::post('/{id}/read', [\Jiny\Partner\Http\Controllers\Admin\PartnerNotificationsController::class, 'markAsRead'])->name('read');
+            Route::post('/mark-all-read', [\Jiny\Partner\Http\Controllers\Admin\PartnerNotificationsController::class, 'markAllAsRead'])->name('mark-all-read');
+
+            // 사용자별 알림 조회
+            Route::get('/user/{userId}', [\Jiny\Partner\Http\Controllers\Admin\PartnerNotificationsController::class, 'getUserNotifications'])->name('user');
+
+            // 통계 및 분석
+            Route::get('/statistics', [\Jiny\Partner\Http\Controllers\Admin\PartnerNotificationsController::class, 'statistics'])->name('statistics');
+            Route::get('/export', [\Jiny\Partner\Http\Controllers\Admin\PartnerNotificationsController::class, 'export'])->name('export');
+        });
+
+        // ====================================================================
         // 파트너 네트워크 관리 (Partner Network Management) - MLM 구조
         // ====================================================================
         Route::prefix('network')->name('network.')->group(function () {
@@ -332,6 +416,10 @@ Route::middleware(['web', 'admin'])->prefix('admin')->name('admin.')->group(func
                 Route::post('/calculate', [\Jiny\Partner\Http\Controllers\Admin\PartnerNetwork\CommissionController::class, 'calculate'])->name('calculate');
                 Route::post('/bulk-process', [\Jiny\Partner\Http\Controllers\Admin\PartnerNetwork\CommissionController::class, 'bulkProcess'])->name('bulk-process');
                 Route::get('/partner/{id}/summary', [\Jiny\Partner\Http\Controllers\Admin\PartnerNetwork\CommissionController::class, 'partnerSummary'])->name('partner-summary');
+
+                // 커미션 관리 (Quick Actions)
+                Route::put('/{id}/update', [\Jiny\Partner\Http\Controllers\Admin\PartnerNetwork\CommissionController::class, 'update'])->name('update');
+                Route::post('/{id}/cancel', [\Jiny\Partner\Http\Controllers\Admin\PartnerNetwork\CommissionController::class, 'cancel'])->name('cancel');
             });
 
             // 네트워크 통계 및 분석
@@ -353,57 +441,62 @@ Route::middleware(['web', 'admin'])->prefix('admin')->name('admin.')->group(func
 
         });
 
+        // ====================================================================
+        // 파트너 성과 지표 관리 (Partner Performance Metrics Management)
+        // ====================================================================
+        Route::prefix('performance/metrics')->name('performance.metrics.')->group(function () {
+            // 기본 CRUD
+            Route::get('/', [\Jiny\Partner\Http\Controllers\Admin\PartnerPerformanceMetricsController::class, 'index'])->name('index');
+            Route::get('/create', [\Jiny\Partner\Http\Controllers\Admin\PartnerPerformanceMetricsController::class, 'create'])->name('create');
+            Route::post('/', [\Jiny\Partner\Http\Controllers\Admin\PartnerPerformanceMetricsController::class, 'store'])->name('store');
+            Route::get('/{id}', [\Jiny\Partner\Http\Controllers\Admin\PartnerPerformanceMetricsController::class, 'show'])->name('show');
+            Route::get('/{id}/edit', [\Jiny\Partner\Http\Controllers\Admin\PartnerPerformanceMetricsController::class, 'edit'])->name('edit');
+            Route::put('/{id}', [\Jiny\Partner\Http\Controllers\Admin\PartnerPerformanceMetricsController::class, 'update'])->name('update');
+            Route::delete('/{id}', [\Jiny\Partner\Http\Controllers\Admin\PartnerPerformanceMetricsController::class, 'destroy'])->name('destroy');
+        });
+
+        // ====================================================================
+        // 파트너 지급 관리 (Partner Payments Management)
+        // ====================================================================
+        Route::prefix('payments')->name('payments.')->group(function () {
+            // 기본 CRUD
+            Route::get('/', [\Jiny\Partner\Http\Controllers\Admin\PartnerPaymentsController::class, 'index'])->name('index');
+            Route::get('/create', [\Jiny\Partner\Http\Controllers\Admin\PartnerPaymentsController::class, 'create'])->name('create');
+            Route::post('/', [\Jiny\Partner\Http\Controllers\Admin\PartnerPaymentsController::class, 'store'])->name('store');
+            Route::get('/{id}', [\Jiny\Partner\Http\Controllers\Admin\PartnerPaymentsController::class, 'show'])->name('show');
+            Route::get('/{id}/edit', [\Jiny\Partner\Http\Controllers\Admin\PartnerPaymentsController::class, 'edit'])->name('edit');
+            Route::put('/{id}', [\Jiny\Partner\Http\Controllers\Admin\PartnerPaymentsController::class, 'update'])->name('update');
+            Route::delete('/{id}', [\Jiny\Partner\Http\Controllers\Admin\PartnerPaymentsController::class, 'destroy'])->name('destroy');
+
+            // 상태 변경 액션
+            Route::post('/{id}/approve', [\Jiny\Partner\Http\Controllers\Admin\PartnerPaymentsController::class, 'approve'])->name('approve');
+            Route::post('/{id}/process', [\Jiny\Partner\Http\Controllers\Admin\PartnerPaymentsController::class, 'process'])->name('process');
+            Route::post('/{id}/complete', [\Jiny\Partner\Http\Controllers\Admin\PartnerPaymentsController::class, 'complete'])->name('complete');
+            Route::post('/{id}/cancel', [\Jiny\Partner\Http\Controllers\Admin\PartnerPaymentsController::class, 'cancel'])->name('cancel');
+        });
+
+        // ====================================================================
+        // Country Analytics - 국가별 파트너 현황 및 매출 분석
+        // ====================================================================
+        Route::prefix('country')->name('country.')->group(function () {
+            // 국가별 파트너 현황 대시보드
+            Route::get('/', \Jiny\Partner\Http\Controllers\Admin\PartnerCountry\IndexController::class)
+                ->name('index');
+
+            // 국가별 상세 분석 (향후 확장)
+            Route::get('/{country}/details', function($country) {
+                return view('jiny-partner::admin.country.details', [
+                    'country' => $country,
+                    'pageTitle' => '국가별 상세 분석'
+                ]);
+            })->name('details');
+
+            // 데이터 내보내기
+            Route::get('/export', function() {
+                // Excel 내보내기 로직 구현 예정
+                return response()->json(['message' => '데이터 내보내기 기능 구현 중']);
+            })->name('export');
+        });
+
     });
 });
-
-/*
-|--------------------------------------------------------------------------
-| Future API Routes
-|--------------------------------------------------------------------------
-|
-| 파트너 앱이나 외부 시스템과의 연동을 위한 API 라우트
-| RESTful API 패턴으로 구성될 예정
-|
-*/
-
-// Route::middleware(['api', 'auth:sanctum'])->prefix('api/partner')->name('api.partner.')->group(function () {
-//
-//     // ====================================================================
-//     // Authentication & Profile Management
-//     // ====================================================================
-//     Route::prefix('auth')->name('auth.')->group(function () {
-//         Route::post('/login', [AuthController::class, 'login'])->name('login');
-//         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-//         Route::get('/profile', [AuthController::class, 'profile'])->name('profile');
-//         Route::put('/profile', [AuthController::class, 'updateProfile'])->name('profile.update');
-//     });
-//
-//     // ====================================================================
-//     // Job Management
-//     // ====================================================================
-//     Route::prefix('jobs')->name('jobs.')->group(function () {
-//         Route::get('/', [JobController::class, 'index'])->name('index');
-//         Route::get('/{id}', [JobController::class, 'show'])->name('show');
-//         Route::post('/{id}/accept', [JobController::class, 'accept'])->name('accept');
-//         Route::post('/{id}/complete', [JobController::class, 'complete'])->name('complete');
-//         Route::post('/{id}/cancel', [JobController::class, 'cancel'])->name('cancel');
-//     });
-//
-//     // ====================================================================
-//     // Performance & Statistics
-//     // ====================================================================
-//     Route::prefix('performance')->name('performance.')->group(function () {
-//         Route::get('/dashboard', [PerformanceController::class, 'dashboard'])->name('dashboard');
-//         Route::get('/earnings', [PerformanceController::class, 'earnings'])->name('earnings');
-//         Route::get('/ratings', [PerformanceController::class, 'ratings'])->name('ratings');
-//     });
-//
-//     // ====================================================================
-//     // Notifications & Messages
-//     // ====================================================================
-//     Route::prefix('notifications')->name('notifications.')->group(function () {
-//         Route::get('/', [NotificationController::class, 'index'])->name('index');
-//         Route::post('/{id}/read', [NotificationController::class, 'markAsRead'])->name('read');
-//         Route::post('/read-all', [NotificationController::class, 'markAllAsRead'])->name('read-all');
-//     });
-// });

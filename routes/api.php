@@ -13,8 +13,8 @@ use Jiny\Partner\Http\Controllers\Api\UserSearchController;
 |
 */
 
-// API 미들웨어 적용
-Route::middleware(['api'])->prefix('api/partner')->name('api.partner.')->group(function () {
+// API 미들웨어 적용 - v1 API
+Route::middleware(['api'])->prefix('api/partner/v1')->name('api.partner.v1.')->group(function () {
 
     // ====================================================================
     // 샤딩된 사용자 검색 API
@@ -22,15 +22,15 @@ Route::middleware(['api'])->prefix('api/partner')->name('api.partner.')->group(f
     Route::prefix('users')->name('users.')->group(function () {
 
         // 이메일/이름으로 샤딩된 회원 검색
-        // GET /api/partner/users/search?query=test&limit=20
+        // GET /api/partner/v1/users/search?query=test&limit=20
         Route::get('/search', [UserSearchController::class, 'search'])->name('search');
 
         // UUID로 특정 회원 조회
-        // GET /api/partner/users/find-by-uuid?uuid=xxxx-xxxx-xxxx
+        // GET /api/partner/v1/users/find-by-uuid?uuid=xxxx-xxxx-xxxx
         Route::get('/find-by-uuid', [UserSearchController::class, 'findByUuid'])->name('find-by-uuid');
 
         // 샤딩된 테이블 정보 조회
-        // GET /api/partner/users/tables
+        // GET /api/partner/v1/users/tables
         Route::get('/tables', [UserSearchController::class, 'getTables'])->name('tables');
     });
 
@@ -45,8 +45,8 @@ Route::middleware(['api'])->prefix('api/partner')->name('api.partner.')->group(f
 |
 */
 
-// 관리자 API 미들웨어 적용 (웹 세션 기반)
-Route::middleware(['web', 'admin'])->prefix('api/admin/partner')->name('api.admin.partner.')->group(function () {
+// 관리자 API 미들웨어 적용 (웹 세션 기반) - v1 API
+Route::middleware(['web', 'admin'])->prefix('api/admin/partner/v1')->name('api.admin.partner.v1.')->group(function () {
 
     // 관리자용 사용자 검색 (기존 SearchController 재사용)
     Route::prefix('users')->name('users.')->group(function () {
@@ -56,9 +56,19 @@ Route::middleware(['web', 'admin'])->prefix('api/admin/partner')->name('api.admi
         Route::put('/{id}/status', [\Jiny\Partner\Http\Controllers\Admin\PartnerUsers\StatusController::class, 'update'])->name('status.update');
         Route::get('/{id}/status', [\Jiny\Partner\Http\Controllers\Admin\PartnerUsers\StatusController::class, 'show'])->name('status.show');
 
-        // 파트너 코드 관리 API
-        Route::post('/{id}/partner-code', [\Jiny\Partner\Http\Controllers\Admin\PartnerUsers\PartnerCodeController::class, 'generate'])->name('partner-code.generate');
-        Route::delete('/{id}/partner-code', [\Jiny\Partner\Http\Controllers\Admin\PartnerUsers\PartnerCodeController::class, 'delete'])->name('partner-code.delete');
+        // 파트너 코드 관리 API (기존 라우트 - 호환성 유지)
+        Route::post('/{id}/partner-code', [\Jiny\Partner\Http\Controllers\Api\Partner\CodeController::class, 'generate'])->name('partner-code.generate');
+        Route::delete('/{id}/partner-code', [\Jiny\Partner\Http\Controllers\Api\Partner\CodeController::class, 'delete'])->name('partner-code.delete');
+    });
+
+    // 파트너 검색 API (재사용 가능)
+    Route::prefix('partners')->name('partners.')->group(function () {
+        Route::get('/search', \Jiny\Partner\Http\Controllers\Api\Partner\SearchController::class)->name('search');
+    });
+
+    // 커미션 관리 API
+    Route::prefix('commissions')->name('commissions.')->group(function () {
+        Route::post('/calculate/{salesId}', \Jiny\Partner\Http\Controllers\Api\Partner\Commission\CalculateController::class)->name('calculate');
     });
 
 });
@@ -73,7 +83,7 @@ Route::middleware(['web', 'admin'])->prefix('api/admin/partner')->name('api.admi
 |
 */
 
-Route::middleware(['api'])->prefix('api/public/partner')->name('api.public.partner.')->group(function () {
+Route::middleware(['api'])->prefix('api/public/partner/v1')->name('api.public.partner.v1.')->group(function () {
 
     // 파트너 프로그램 기본 정보
     Route::get('/info', function () {
@@ -124,4 +134,21 @@ Route::middleware(['api'])->prefix('api/public/partner')->name('api.public.partn
         }
     })->name('stats.tables');
 
+});
+
+/*
+|--------------------------------------------------------------------------
+| 파트너 코드 관리를 위한 간편 API Routes
+|--------------------------------------------------------------------------
+|
+| 뷰에서 사용하는 간편한 API 경로
+| 관리자 인증이 필요함
+|
+*/
+
+// 파트너 코드 관리를 위한 간편 API (웹 세션 기반 인증)
+Route::middleware(['web', 'admin'])->prefix('api/partner/code')->group(function () {
+    Route::post('/generate/{id}', [\Jiny\Partner\Http\Controllers\Api\Partner\CodeController::class, 'generate'])->name('api.partner.code.generate');
+    Route::delete('/delete/{id}', [\Jiny\Partner\Http\Controllers\Api\Partner\CodeController::class, 'delete'])->name('api.partner.code.delete');
+    Route::get('/test-generate/{id}', [\Jiny\Partner\Http\Controllers\Api\Partner\CodeController::class, 'testGenerate'])->name('api.partner.code.test-generate');
 });

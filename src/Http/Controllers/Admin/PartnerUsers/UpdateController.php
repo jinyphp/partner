@@ -65,6 +65,15 @@ class UpdateController extends Controller
             );
         }
 
+        // 개별 수수료 타입에 따른 필드 정리
+        if (isset($validatedData['individual_commission_type'])) {
+            if ($validatedData['individual_commission_type'] === 'percentage') {
+                $validatedData['individual_commission_amount'] = 0;
+            } elseif ($validatedData['individual_commission_type'] === 'fixed_amount') {
+                $validatedData['individual_commission_rate'] = 0;
+            }
+        }
+
         // 파트너 회원 수정
         $item->update($validatedData);
 
@@ -84,6 +93,7 @@ class UpdateController extends Controller
             'shard_number' => 'nullable|integer|min:0|max:999',
             'email' => 'required|email|max:191',
             'name' => 'required|string|max:100',
+            'partner_type_id' => 'required|exists:partner_types,id',
             'partner_tier_id' => 'required|exists:partner_tiers,id',
             'status' => 'required|in:active,inactive,suspended,pending',
             'status_reason' => 'nullable|string',
@@ -95,7 +105,13 @@ class UpdateController extends Controller
             'tier_assigned_at' => 'nullable|date',
             'last_performance_review_at' => 'nullable|date',
             'profile_data' => 'nullable|string',
-            'admin_notes' => 'nullable|string'
+            'admin_notes' => 'nullable|string',
+
+            // 개별 수수료 설정
+            'individual_commission_type' => 'nullable|in:percentage,fixed_amount',
+            'individual_commission_rate' => 'nullable|numeric|min:0|max:100|required_if:individual_commission_type,percentage',
+            'individual_commission_amount' => 'nullable|numeric|min:0|required_if:individual_commission_type,fixed_amount',
+            'commission_notes' => 'nullable|string|max:1000'
         ];
 
         // 수정시에는 다른 레코드와의 중복만 체크

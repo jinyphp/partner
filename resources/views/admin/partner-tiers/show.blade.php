@@ -4,8 +4,9 @@
 
 @section('content')
 <div class="container-fluid">
+
     <!-- 헤더 -->
-    <div class="row mb-4">
+    <section class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -29,10 +30,10 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- 등급 상태 요약 카드 -->
-    <div class="row mb-4">
+    <section class="row mb-4">
         <div class="col-md-3">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
@@ -69,41 +70,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <div class="bg-info bg-gradient rounded-circle p-3 stat-circle">
-                                <i class="fe fe-star text-white"></i>
-                            </div>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="mb-0 text-muted">우선순위</h6>
-                            <h3 class="mb-0 fw-bold">{{ $item->priority_level }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <div class="bg-primary bg-gradient rounded-circle p-3 stat-circle">
-                                <i class="fe fe-check-circle text-white"></i>
-                            </div>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="mb-0 text-muted">최소 완료 작업</h6>
-                            <h3 class="mb-0 fw-bold">{{ number_format($item->min_completed_jobs) }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
+        {{-- <div class="col-md-3">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
@@ -119,84 +86,34 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- 계층 관리 및 비용 정보 카드 -->
-    <div class="row mb-4">
-        <!-- 계층 관리 정보 -->
-        <div class="col-md-4">
+        </div> --}}
+        <!-- 비용 정보 -->
+        <div class="col-md-6">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
-                            <div class="bg-warning bg-gradient rounded-circle p-3 stat-circle">
-                                <i class="fe fe-users text-white"></i>
-                            </div>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="mb-0 text-muted">하위 파트너 관리</h6>
-                            @if($item->can_recruit)
-                                <h3 class="mb-0 fw-bold text-success">최대 {{ $item->max_children ?? '무제한' }}명</h3>
-                                <small class="text-muted">{{ $item->max_depth ?? '제한없음' }}단계 깊이</small>
-                            @else
-                                <h3 class="mb-0 fw-bold text-muted">모집 불가</h3>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 가입 비용 정보 -->
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <div class="bg-danger bg-gradient rounded-circle p-3 stat-circle">
+                            <div class="bg-primary bg-gradient rounded-circle p-3 stat-circle">
                                 <i class="fe fe-credit-card text-white"></i>
                             </div>
                         </div>
                         <div class="flex-grow-1 ms-3">
-                            <h6 class="mb-0 text-muted">가입 비용</h6>
-                            @if($item->cost_management_enabled && $item->registration_fee > 0)
-                                <h3 class="mb-0 fw-bold">{{ number_format($item->registration_fee) }}원</h3>
-                                @if($item->activation_fee > 0)
-                                    <small class="text-muted">활성화: {{ number_format($item->activation_fee) }}원</small>
-                                @endif
-                            @else
-                                <h3 class="mb-0 fw-bold text-success">무료</h3>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 유지 비용 정보 -->
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <div class="bg-secondary bg-gradient rounded-circle p-3 stat-circle">
-                                <i class="fe fe-calendar text-white"></i>
-                            </div>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="mb-0 text-muted">유지 비용</h6>
-                            @if($item->cost_management_enabled)
-                                @if($item->monthly_maintenance_fee > 0)
-                                    <h3 class="mb-0 fw-bold">{{ number_format($item->monthly_maintenance_fee) }}원/월</h3>
-                                    @if($item->annual_maintenance_fee > 0)
-                                        <small class="text-muted">연간: {{ number_format($item->annual_maintenance_fee) }}원</small>
+                            <h6 class="mb-0 text-muted">비용 정보</h6>
+                            @if($item->registration_fee > 0 || $item->monthly_fee > 0 || $item->annual_fee > 0)
+                                <div class="mt-1">
+                                    @if($item->registration_fee > 0)
+                                        <div><strong>가입:</strong> {{ number_format($item->registration_fee) }}원</div>
                                     @endif
-                                @elseif($item->annual_maintenance_fee > 0)
-                                    <h3 class="mb-0 fw-bold">{{ number_format($item->annual_maintenance_fee) }}원/년</h3>
-                                @else
-                                    <h3 class="mb-0 fw-bold text-success">무료</h3>
-                                @endif
+                                    @if($item->monthly_fee > 0)
+                                        <div><strong>월간:</strong> {{ number_format($item->monthly_fee) }}원/월</div>
+                                    @endif
+                                    @if($item->annual_fee > 0)
+                                        <div><strong>연간:</strong> {{ number_format($item->annual_fee) }}원/년</div>
+                                    @endif
+                                    @if($item->fee_waiver_available)
+                                        <small class="text-success">면제 가능</small>
+                                    @endif
+                                </div>
                             @else
                                 <h3 class="mb-0 fw-bold text-success">무료</h3>
                             @endif
@@ -205,7 +122,12 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
+
+    <!-- 비용 정보 카드 -->
+    {{-- <div class="row mb-4">
+
+    </div> --}}
 
     <div class="row">
         <div class="col-lg-8">
@@ -253,10 +175,14 @@
                             <div class="mb-3">
                                 <div class="d-flex align-items-center mb-2">
                                     <i class="fe fe-percent text-muted me-2"></i>
-                                    <label class="form-label text-muted mb-0">수수료율</label>
+                                    <label class="form-label text-muted mb-0">수수료</label>
                                 </div>
                                 <div>
-                                    <span class="badge bg-success fs-5 px-3 py-2">{{ $item->commission_rate }}%</span>
+                                    @if($item->commission_type === 'percentage')
+                                        <span class="badge bg-success fs-5 px-3 py-2">{{ $item->commission_rate }}%</span>
+                                    @else
+                                        <span class="badge bg-info fs-5 px-3 py-2">{{ number_format($item->commission_amount) }}원</span>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -307,54 +233,49 @@
                 </div>
             </div>
 
-            <!-- 성과 기준 -->
+            <!-- 비용 구조 -->
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
-                        <i class="fe fe-target me-2"></i>성과 기준
+                        <i class="fe fe-dollar-sign me-2"></i>비용 구조
                     </h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="mb-3">
                                 <div class="d-flex align-items-center mb-2">
-                                    <i class="fe fe-check-circle text-muted me-2"></i>
-                                    <label class="form-label text-muted mb-0">최소 완료 작업 수</label>
+                                    <i class="fe fe-credit-card text-muted me-2"></i>
+                                    <label class="form-label text-muted mb-0">가입비</label>
                                 </div>
-                                <div class="fs-4 fw-bold text-primary">{{ number_format($item->min_completed_jobs) }}<small class="fs-6 text-muted">건</small></div>
+                                <div class="fs-4 fw-bold text-primary">{{ number_format($item->registration_fee ?? 0) }}<small class="fs-6 text-muted">원</small></div>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="mb-3">
                                 <div class="d-flex align-items-center mb-2">
-                                    <i class="fe fe-star text-muted me-2"></i>
-                                    <label class="form-label text-muted mb-0">최소 평점</label>
+                                    <i class="fe fe-calendar text-muted me-2"></i>
+                                    <label class="form-label text-muted mb-0">월 유지비</label>
                                 </div>
-                                <div class="fs-4 fw-bold text-warning">{{ $item->min_rating }}<small class="fs-6 text-muted">/5.0</small></div>
+                                <div class="fs-4 fw-bold text-warning">{{ number_format($item->monthly_fee ?? 0) }}<small class="fs-6 text-muted">원</small></div>
                             </div>
                         </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="mb-3">
                                 <div class="d-flex align-items-center mb-2">
-                                    <i class="fe fe-clock text-muted me-2"></i>
-                                    <label class="form-label text-muted mb-0">최소 시간 준수율</label>
+                                    <i class="fe fe-calendar text-muted me-2"></i>
+                                    <label class="form-label text-muted mb-0">연 유지비</label>
                                 </div>
-                                <div class="fs-4 fw-bold text-info">{{ $item->min_punctuality_rate }}<small class="fs-6 text-muted">%</small></div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="fe fe-heart text-muted me-2"></i>
-                                    <label class="form-label text-muted mb-0">최소 고객 만족도</label>
-                                </div>
-                                <div class="fs-4 fw-bold text-success">{{ $item->min_satisfaction_rate }}<small class="fs-6 text-muted">%</small></div>
+                                <div class="fs-4 fw-bold text-info">{{ number_format($item->annual_fee ?? 0) }}<small class="fs-6 text-muted">원</small></div>
                             </div>
                         </div>
                     </div>
+                    @if($item->fee_structure_notes)
+                        <div class="alert alert-info border-0 mt-3">
+                            <i class="fe fe-info me-2"></i>
+                            {{ $item->fee_structure_notes }}
+                        </div>
+                    @endif
                 </div>
             </div>
 

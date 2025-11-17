@@ -4,13 +4,44 @@
 
 @section('content')
 <div class="container-fluid">
+
     <!-- 헤더 -->
-    <div class="row mb-4">
+    <section class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h2 class="mb-1">{{ $title }} 상세보기</h2>
-                    <p class="text-muted mb-0">지원자: {{ $item->personal_info['name'] ?? $item->user->name ?? 'Unknown' }}</p>
+                    <p class="text-muted mb-1">
+                        지원자: {{ $item->personal_info['name'] ?? $item->user->name ?? 'Unknown' }}
+                    </p>
+                    {{-- @php
+                        $headerEmail = null;
+                        // 이메일 정보 확인 (4단계 검색)
+                        if (!empty($item->personal_info['email'])) {
+                            $headerEmail = $item->personal_info['email'];
+                        } elseif (isset($item->user) && !empty($item->user->email)) {
+                            $headerEmail = $item->user->email;
+                        } elseif (!empty($item->user_uuid)) {
+                            $user = \App\Models\User::where('uuid', $item->user_uuid)->first();
+                            if ($user && !empty($user->email)) {
+                                $headerEmail = $user->email;
+                            }
+                        } elseif (!empty($item->email)) {
+                            $headerEmail = $item->email;
+                        }
+                    @endphp --}}
+                    {{-- @if($headerEmail)
+                        <p class="text-muted mb-0">
+                            <i class="fe fe-mail me-1"></i>{{ $headerEmail }}
+                            <a href="mailto:{{ $headerEmail }}" class="btn btn-sm btn-link p-0 ms-2">
+                                <i class="fe fe-external-link"></i>
+                            </a>
+                        </p>
+                    @else
+                        <p class="text-danger mb-0">
+                            <i class="fe fe-alert-triangle me-1"></i>이메일 정보가 없습니다
+                        </p>
+                    @endif --}}
                 </div>
                 <div>
                     <a href="{{ route('admin.partner.applications.edit', $item->id) }}" class="btn btn-primary me-2">
@@ -28,10 +59,10 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- 지원서 상태 -->
-    <div class="row mb-4">
+    <section class="row mb-4">
         <div class="col-12">
             <div class="card">
                 <div class="card-body">
@@ -82,11 +113,12 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <div class="row">
         <!-- 좌측 메인 컨텐츠 (col-8) -->
         <div class="col-8">
+
             <!-- 개인정보 -->
             <div class="card mb-4">
                 <div class="card-header">
@@ -95,26 +127,46 @@
                 <div class="card-body">
                     @if($item->personal_info)
                         <div class="row">
-                            <div class="col-6">
+                            <div class="col-6 mb-3">
                                 <strong>이름:</strong> {{ $item->personal_info['name'] ?? 'N/A' }}
                             </div>
-                            <div class="col-6">
+                            <div class="col-6 mb-3">
                                 <strong>연락처:</strong> {{ $item->personal_info['phone'] ?? 'N/A' }}
                             </div>
                         </div>
-                        <div class="row mt-2">
-                            <div class="col-6">
-                                <strong>이메일:</strong> {{ $item->user->email ?? 'N/A' }}
-                            </div>
-                            <div class="col-6">
-                                <strong>출생년도:</strong> {{ $item->personal_info['birth_year'] ?? 'N/A' }}
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <strong>이메일:</strong>
+                                @php
+                                    $email = null;
+                                    // 4단계 이메일 검색
+                                    if (!empty($item->personal_info['email'])) {
+                                        $email = $item->personal_info['email'];
+                                    } elseif (isset($item->user) && !empty($item->user->email)) {
+                                        $email = $item->user->email;
+                                    } elseif (!empty($item->user_uuid)) {
+                                        $user = \App\Models\User::where('uuid', $item->user_uuid)->first();
+                                        if ($user && !empty($user->email)) {
+                                            $email = $user->email;
+                                        }
+                                    } elseif (!empty($item->email)) {
+                                        $email = $item->email;
+                                    }
+                                @endphp
+
+                                @if($email)
+                                    <span class="text-primary">{{ $email }}</span>
+                                    {{-- <a href="mailto:{{ $email }}" class="btn btn-sm btn-outline-primary ms-2">
+                                        <i class="fe fe-mail"></i>
+                                    </a> --}}
+                                @else
+                                    <span class="text-muted">이메일 정보 없음</span>
+                                    <small class="text-danger ms-2">(확인 필요)</small>
+                                @endif
                             </div>
                         </div>
                         <div class="mt-2">
                             <strong>주소:</strong> {{ $item->personal_info['address'] ?? 'N/A' }}
-                        </div>
-                        <div class="mt-2">
-                            <strong>학력:</strong> {{ $item->personal_info['education_level'] ?? 'N/A' }}
                         </div>
                     @else
                         <p class="text-muted">개인정보가 입력되지 않았습니다.</p>
@@ -204,10 +256,11 @@
 
         <!-- 우측 사이드바 (col-4) -->
         <div class="col-4">
+
             <!-- 추천인 정보 (추천인이 있는 경우만 표시) -->
             @if($item->referrerPartner)
             <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
+                <div class="card-header text-white">
                     <h5 class="mb-0">
                         <i class="fe fe-users me-2"></i>추천인 정보
                     </h5>
@@ -223,7 +276,28 @@
                     </div>
                     <div class="mb-3">
                         <strong>추천인 이메일:</strong>
-                        <br><small>{{ $item->referrerPartner->email ?? 'N/A' }}</small>
+                        <br>
+                        @php
+                            $referrerEmail = null;
+                            // 추천인 이메일 확인
+                            if (!empty($item->referrerPartner->email)) {
+                                $referrerEmail = $item->referrerPartner->email;
+                            } elseif (!empty($item->referrerPartner->user_uuid)) {
+                                $referrerUser = \App\Models\User::where('uuid', $item->referrerPartner->user_uuid)->first();
+                                if ($referrerUser && !empty($referrerUser->email)) {
+                                    $referrerEmail = $referrerUser->email;
+                                }
+                            }
+                        @endphp
+
+                        @if($referrerEmail)
+                            <span class="text-success">{{ $referrerEmail }}</span>
+                            {{-- <a href="mailto:{{ $referrerEmail }}" class="btn btn-sm btn-outline-success ms-1">
+                                <i class="fe fe-mail"></i>
+                            </a> --}}
+                        @else
+                            <small class="text-muted">이메일 정보 없음</small>
+                        @endif
                     </div>
                     @if($item->referrerPartner->partnerTier)
                     <div class="mb-3">
@@ -326,30 +400,13 @@
             @endif
 
             <!-- 빠른 액션 -->
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0 fw-bold">
-                        <i class="fe fe-zap me-2"></i>빠른 액션
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="{{ route('admin.partner.applications.edit', $item->id) }}"
-                           class="btn btn-outline-primary btn-sm">
-                            <i class="fe fe-edit me-1"></i>지원서 수정
-                        </a>
-                        <a href="{{ route('admin.partner.approval.show', $item->id) }}"
-                           class="btn btn-outline-success btn-sm">
-                            <i class="fe fe-settings me-1"></i>승인 관리
-                        </a>
-                        <button type="button"
-                                class="btn btn-outline-danger btn-sm"
-                                onclick="confirmDelete({{ $item->id }}, '{{ $item->personal_info['name'] ?? $item->user->name ?? 'Unknown' }}')">
-                            <i class="fe fe-trash-2 me-1"></i>지원서 삭제
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <section>
+                <a href="{{ route('admin.partner.approval.show', $item->id) }}"
+                           class="btn btn-success">
+                    <i class="fe fe-settings me-1"></i>승인 관리
+                </a>
+            </section>
+
         </div>
     </div>
 

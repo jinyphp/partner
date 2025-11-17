@@ -4,8 +4,9 @@
 
 @section('content')
 <div class="container-fluid">
+
     <!-- 헤더 -->
-    <div class="row mb-4">
+    <section class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -22,10 +23,10 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- 통계 카드 -->
-    <div class="row mb-4">
+    <section class="row mb-4">
         <div class="col-md-3">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
@@ -94,79 +95,26 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- 필터 -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <form method="GET" action="{{ route('admin.' . $routePrefix . '.index') }}">
-                <div class="row">
-                    <div class="col-md-3">
-                        <div class="form-group">
-                            <label for="search">검색</label>
-                            <input type="text"
-                                   id="search"
-                                   name="search"
-                                   class="form-control"
-                                   placeholder="제목, 주문번호, 파트너명으로 검색..."
-                                   value="{{ $searchValue }}">
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="form-group">
-                            <label for="status">상태</label>
-                            <select id="status" name="status" class="form-control">
-                                <option value="">전체</option>
-                                @foreach($filterOptions['statuses'] as $value => $label)
-                                    <option value="{{ $value }}" {{ $selectedStatus == $value ? 'selected' : '' }}>
-                                        {{ $label }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="form-group">
-                            <label for="partner_id">파트너</label>
-                            <select id="partner_id" name="partner_id" class="form-control">
-                                <option value="">전체</option>
-                                @foreach($filterOptions['partners'] as $id => $name)
-                                    <option value="{{ $id }}" {{ $selectedPartnerId == $id ? 'selected' : '' }}>
-                                        {{ $name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="form-group">
-                            <label for="start_date">시작일</label>
-                            <input type="date" id="start_date" name="start_date" class="form-control" value="{{ $startDate }}">
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="form-group">
-                            <label for="end_date">종료일</label>
-                            <input type="date" id="end_date" name="end_date" class="form-control" value="{{ $endDate }}">
-                        </div>
-                    </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button type="submit" class="btn btn-outline-primary me-2">
-                            <i class="fe fe-search me-1"></i>검색
-                        </button>
-                        <a href="{{ route('admin.' . $routePrefix . '.index') }}" class="btn btn-outline-secondary">
-                            <i class="fe fe-refresh-cw me-1"></i>초기화
-                        </a>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
+    @includeIf("jiny-partner::admin.partner-sales.partials.filter")
 
     <!-- 매출 목록 -->
-    <div class="card">
-        <div class="card-header">
+    <section class="card">
+        <div class="card-header d-flex justify-content-between">
             <h5 class="mb-0">파트너 매출 목록</h5>
+            <div class="d-flex gap-2">
+                <!-- 대량 작업 버튼 -->
+                @if($items->count() > 0)
+                    <button type="button" class="btn btn-outline-danger btn-sm" id="bulkDeleteBtn" disabled>
+                        <i class="fe fe-trash-2 me-1"></i>선택 삭제
+                    </button>
+                    <button type="button" class="btn btn-outline-info btn-sm" id="bulkCommissionBtn" disabled>
+                        <i class="fe fe-calculator me-1"></i>커미션 계산
+                    </button>
+                @endif
+            </div>
         </div>
         <div class="card-body p-0">
             @if($items->count() > 0)
@@ -177,13 +125,15 @@
                                 <th width="40">
                                     <input type="checkbox" id="checkAll">
                                 </th>
+                                <th width="150">매출일</th>
                                 <th>매출 정보</th>
-                                <th>파트너</th>
+
                                 <th width="120">금액</th>
                                 <th width="80">상태</th>
-                                <th width="100">잔액 영향</th>
-                                <th width="100">커미션</th>
-                                <th width="100">매출일</th>
+                                <th width="150">잔액 영향</th>
+                                <th width="150">커미션</th>
+
+                                <th width="200">파트너</th>
                                 <th width="100">관리</th>
                             </tr>
                         </thead>
@@ -194,19 +144,24 @@
                                         <input type="checkbox" class="item-checkbox" value="{{ $item->id }}">
                                     </td>
                                     <td>
+                                        <div>{{ $item->sales_date ? $item->sales_date->format('Y-m-d') : '' }}</div>
+                                        <small class="text-muted">{{ $item->created_at->format('H:i') }}</small>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center mb-1">
+                                            <span class="badge bg-primary me-2">
+                                                <i class="fe fe-hash me-1"></i>{{ $item->order_number }}
+                                            </span>
+                                        </div>
                                         <div class="font-weight-bold">{{ $item->title }}</div>
-                                        <small class="text-muted">{{ $item->order_number }}</small>
+
                                         @if($item->category)
                                             <span class="badge badge-light">{{ $item->category }}</span>
                                         @endif
+
+
                                     </td>
-                                    <td>
-                                        <div>{{ $item->partner_name }}</div>
-                                        <small class="text-muted">{{ $item->partner_email }}</small>
-                                        @if($item->partner && $item->partner->tier)
-                                            <span class="badge badge-info">{{ $item->partner->tier->tier_name }}</span>
-                                        @endif
-                                    </td>
+
                                     <td class="text-right">
                                         <div class="font-weight-bold">{{ number_format($item->amount) }}원</div>
                                         <small class="text-muted">{{ $item->currency }}</small>
@@ -274,9 +229,13 @@
                                             <span class="text-muted">미계산</span>
                                         @endif
                                     </td>
+
                                     <td>
-                                        <div>{{ $item->sales_date ? $item->sales_date->format('Y-m-d') : '' }}</div>
-                                        <small class="text-muted">{{ $item->created_at->format('H:i') }}</small>
+                                        <div>{{ $item->partner_name }}</div>
+                                        <small class="text-muted">{{ $item->partner_email }}</small>
+                                        @if($item->partner && $item->partner->tier)
+                                            <span class="badge badge-info">{{ $item->partner->tier->tier_name }}</span>
+                                        @endif
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
@@ -321,23 +280,9 @@
                 </div>
             @endif
         </div>
-    </div>
+    </section>
 
-    <!-- 대량 작업 버튼 -->
-    @if($items->count() > 0)
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-danger" id="bulkDeleteBtn" disabled>
-                        <i class="fe fe-trash-2 me-1"></i>선택 삭제
-                    </button>
-                    <button type="button" class="btn btn-outline-info" id="bulkCommissionBtn" disabled>
-                        <i class="fe fe-calculator me-1"></i>커미션 계산
-                    </button>
-                </div>
-            </div>
-        </div>
-    @endif
+
 </div>
 
 @push('styles')

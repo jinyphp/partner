@@ -16,15 +16,7 @@ class DestroyController extends Controller
     {
         $interview = PartnerInterview::findOrFail($id);
 
-        // 완료된 면접은 삭제 제한
-        if ($interview->interview_status === 'completed') {
-            return back()->withErrors(['general' => '완료된 면접은 삭제할 수 없습니다.']);
-        }
-
-        // 진행 중인 면접은 삭제 제한
-        if ($interview->interview_status === 'in_progress') {
-            return back()->withErrors(['general' => '진행 중인 면접은 삭제할 수 없습니다.']);
-        }
+        // 모든 상태의 면접 삭제 허용 (상태 검증 없음)
 
         try {
             DB::beginTransaction();
@@ -49,6 +41,15 @@ class DestroyController extends Controller
 
             DB::commit();
 
+            // AJAX 요청인 경우 JSON 응답
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => '면접 일정이 성공적으로 삭제되었습니다.',
+                    'redirect' => route('admin.partner.interview.index')
+                ]);
+            }
+
             return redirect()
                 ->route('admin.partner.interview.index')
                 ->with('success', '면접 일정이 성공적으로 삭제되었습니다.');
@@ -61,6 +62,14 @@ class DestroyController extends Controller
                 'interview_id' => $interview->id,
                 'user_id' => auth()->id()
             ]);
+
+            // AJAX 요청인 경우 JSON 응답
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '면접 삭제 중 오류가 발생했습니다.'
+                ], 500);
+            }
 
             return back()
                 ->withErrors(['general' => '면접 삭제 중 오류가 발생했습니다.'])

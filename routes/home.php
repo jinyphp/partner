@@ -65,8 +65,8 @@ Route::middleware(['web'])->prefix('home')->name('home.')->group(function () {
             Route::put('{id}', \Jiny\Partner\Http\Controllers\Home\PartnerRegist\UpdateController::class)
                 ->name('update');
 
-            // 신청 상태 확인
-            Route::get('{id}/status', \Jiny\Partner\Http\Controllers\Home\PartnerRegist\StatusController::class)
+            // 신청 상태 확인 (JWT 사용자 기반)
+            Route::get('status', \Jiny\Partner\Http\Controllers\Home\Status\IndexController::class)
                 ->name('status');
 
             // 재신청 폼

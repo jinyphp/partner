@@ -207,7 +207,7 @@ async function confirmStatusChange() {
             }
         }
 
-        const response = await fetch(`/api/admin/partner/users/{{ $item->id }}/status`, {
+        const response = await fetch(`/api/admin/partner/v1/users/{{ $item->id }}/status`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',

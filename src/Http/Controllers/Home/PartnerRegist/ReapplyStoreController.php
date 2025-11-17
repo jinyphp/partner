@@ -38,7 +38,7 @@ class ReapplyStoreController extends PartnerController
             ->first();
 
         if ($existingReapplication) {
-            return redirect()->route('home.partner.regist.status', $existingReapplication->id)
+            return redirect()->route('home.partner.regist.status')
                 ->with('info', '이미 재신청을 진행하셨습니다.');
         }
 
@@ -144,7 +144,7 @@ class ReapplyStoreController extends PartnerController
                         'message' => '재신청서가 임시저장되었습니다. 언제든지 이어서 작성하실 수 있습니다.',
                         'application_id' => $newApplication->id,
                         'status' => 'draft',
-                        'redirect_url' => route('home.partner.regist.status', $newApplication->id)
+                        'redirect_url' => route('home.partner.regist.status')
                     ]);
                 } else {
                     return response()->json([
@@ -152,17 +152,17 @@ class ReapplyStoreController extends PartnerController
                         'message' => '재신청이 성공적으로 제출되었습니다! 재검토 후 연락드리겠습니다.',
                         'application_id' => $newApplication->id,
                         'status' => 'submitted',
-                        'redirect_url' => route('home.partner.regist.status', $newApplication->id)
+                        'redirect_url' => route('home.partner.regist.status')
                     ]);
                 }
             }
 
             // 일반 HTTP 요청 (기존 처리 방식)
             if ($isDraft) {
-                return redirect()->route('home.partner.regist.status', $newApplication->id)
+                return redirect()->route('home.partner.regist.status')
                     ->with('success', '재신청서가 임시저장되었습니다.');
             } else {
-                return redirect()->route('home.partner.regist.status', $newApplication->id)
+                return redirect()->route('home.partner.regist.status')
                     ->with('success', '재신청이 성공적으로 제출되었습니다! 재검토 후 연락드리겠습니다.');
             }
 

@@ -3,6 +3,7 @@
 namespace Jiny\Partner\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
 
 class JinyPartnerServiceProvider extends ServiceProvider
@@ -28,6 +29,9 @@ class JinyPartnerServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../../routes/home.php');
         $this->loadRoutesFrom(__DIR__.'/../../routes/api.php');
 
+        // 웹 라우트 로드 (web 미들웨어 그룹 적용)
+        $this->loadWebRoutes();
+
         // 뷰 로드
         $this->loadViewsFrom(__DIR__.'/../../resources/views', 'jiny-partner');
 
@@ -44,5 +48,14 @@ class JinyPartnerServiceProvider extends ServiceProvider
                 __DIR__.'/../../resources/views' => resource_path('views/vendor/jiny-partner'),
             ], 'partner-views');
         }
+    }
+
+    /**
+     * 웹 라우트 로드 (web 미들웨어 그룹 적용)
+     */
+    protected function loadWebRoutes(): void
+    {
+        Route::middleware('web')
+            ->group(__DIR__.'/../../routes/web.php');
     }
 }

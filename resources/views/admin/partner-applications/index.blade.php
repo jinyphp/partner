@@ -4,8 +4,9 @@
 
 @section('content')
 <div class="container-fluid">
+
     <!-- 헤더 -->
-    <div class="row mb-4">
+    <section class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -22,18 +23,9 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
-    <!-- 알림 메시지 -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="alert alert-info">
-                <i class="fe fe-info me-2"></i>
-                <strong>안내:</strong> 파트너 지원서 승인/거부는
-                <a href="{{ route('admin.partner.approval.index') }}" class="alert-link">파트너 승인 관리</a>에서 진행해주세요.
-            </div>
-        </div>
-    </div>
+
 
     <!-- 통계 카드 -->
     <div class="row mb-4">
@@ -147,6 +139,17 @@
                     </div>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- 알림 메시지 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="fe fe-info me-2"></i>
+                <strong>안내:</strong> 파트너 지원서 승인/거부는
+                <a href="{{ route('admin.partner.approval.index') }}" class="alert-link">파트너 승인 관리</a>에서 진행해주세요.
+            </div>
         </div>
     </div>
 

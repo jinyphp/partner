@@ -34,7 +34,7 @@ class EditController extends PartnerController
 
         // Step3. 수정 가능한 상태인지 확인
         if (!in_array($application->application_status, ['draft', 'submitted', 'rejected'])) {
-            return redirect()->route('home.partner.regist.status', $application->id)
+            return redirect()->route('home.partner.regist.status')
                 ->with('error', '현재 상태에서는 신청서를 수정할 수 없습니다.');
         }
 

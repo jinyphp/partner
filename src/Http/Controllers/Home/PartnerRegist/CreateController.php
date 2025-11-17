@@ -79,7 +79,7 @@ class CreateController extends PartnerController
             ->first();
 
         if ($existingApplication) {
-            return redirect()->route('home.partner.regist.status', $existingApplication->id)
+            return redirect()->route('home.partner.regist.status')
                 ->with('info', '이미 진행 중인 신청이 있습니다.');
         }
 

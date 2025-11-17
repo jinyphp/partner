@@ -175,17 +175,17 @@ class IndexController extends Controller
                         break;
                     case 'approved':
                         $activity['action'] = '승인 완료';
-                        $activity['date'] = $application->approval_date;
+                        $activity['date'] = $application->approval_date ?: $application->updated_at;
                         $activity['admin'] = $application->approver;
                         break;
                     case 'rejected':
                         $activity['action'] = '신청 반려';
-                        $activity['date'] = $application->rejection_date;
+                        $activity['date'] = $application->rejection_date ?: $application->updated_at;
                         $activity['admin'] = $application->rejector;
                         break;
                     case 'interview':
                         $activity['action'] = '면접 예정';
-                        $activity['date'] = $application->interview_date;
+                        $activity['date'] = $application->interview_date ?: $application->updated_at;
                         break;
                     default:
                         $activity['action'] = '상태 변경';

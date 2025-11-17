@@ -4,8 +4,9 @@
 
 @section('content')
 <div class="container-fluid">
+
     <!-- 헤더 -->
-    <div class="row mb-4">
+    <section class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -22,10 +23,10 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- 통계 카드 -->
-    <div class="row mb-4">
+    <section class="row mb-4">
         <div class="col-md-3">
 
             <div class="card border-0 shadow-sm">
@@ -96,14 +97,14 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- 필터 -->
-    <div class="card mb-4">
+    <section class="card mb-4">
         <div class="card-body">
             <form method="GET" action="{{ route('admin.' . $routePrefix . '.index') }}">
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="form-group">
                             <label for="search">검색</label>
                             <input type="text"
@@ -124,7 +125,30 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-6 d-flex align-items-end">
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label for="commission_type">수수료 타입</label>
+                            <select id="commission_type" name="commission_type" class="form-control">
+                                <option value="">전체</option>
+                                <option value="percentage" {{ request('commission_type') === 'percentage' ? 'selected' : '' }}>퍼센트</option>
+                                <option value="fixed_amount" {{ request('commission_type') === 'fixed_amount' ? 'selected' : '' }}>고정금액</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label for="parent_type_id">연동 타입</label>
+                            <select id="parent_type_id" name="parent_type_id" class="form-control">
+                                <option value="">전체</option>
+                                @foreach($availablePartnerTypes ?? [] as $type)
+                                    <option value="{{ $type->id }}" {{ request('parent_type_id') == $type->id ? 'selected' : '' }}>
+                                        {{ $type->type_name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
                         <button type="submit" class="btn btn-outline-primary me-2">
                             <i class="fe fe-search me-1"></i>검색
                         </button>
@@ -135,7 +159,7 @@
                 </div>
             </form>
         </div>
-    </div>
+    </section>
 
     <!-- 등급 목록 -->
     <div class="card">
@@ -150,44 +174,29 @@
                         <thead class="table-light">
                             <tr>
                                 <th width="80">순서</th>
-                                <th width="80">코드</th>
                                 <th>등급 정보</th>
                                 <th width="100">파트너</th>
-                                <th width="140">수수료 정보</th>
-                                <th width="120">계층 관리</th>
+                                <th width="160">수수료 정보</th>
                                 <th width="180">비용 정보</th>
-                                <th width="100">요구사항</th>
+                                <th width="120">요구사항</th>
                                 <th width="60">상태</th>
                                 <th width="100">관리</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($items as $item)
+                            @foreach($items as $index => $item)
                             <tr>
                                 <td>
                                     <div class="text-center">
-                                        <span class="badge bg-secondary">{{ $item->priority_level }}</span>
-                                        @if($item->display_order)
-                                            <br><small class="text-muted">{{ $item->display_order }}</small>
-                                        @endif
+                                        <span class="fs-5">{{ $item->priority_level }}</span>
                                     </div>
                                 </td>
                                 <td>
-                                    <code class="bg-light px-2 py-1 rounded">{{ $item->tier_code }}</code>
-                                </td>
-                                <td>
                                     <div>
-                                        @if($item->parentTier)
-                                            <div class="mb-1">
-                                                <small class="text-muted">상위: {{ $item->parentTier->tier_name }}</small>
-                                            </div>
-                                        @endif
                                         <strong>{{ $item->tier_name }}</strong>
+                                        <code class="bg-light px-2 py-1 rounded ms-2 small">{{ $item->tier_code }}</code>
                                         @if($item->description)
                                             <br><small class="text-muted">{{ Str::limit($item->description, 50) }}</small>
-                                        @endif
-                                        @if($item->childTiers->count() > 0)
-                                            <br><small class="text-info">📂 하위 {{ $item->childTiers->count() }}개 등급</small>
                                         @endif
                                     </div>
                                 </td>
@@ -215,49 +224,29 @@
                                             <span class="badge bg-success fs-6 mb-1">{{ $item->commission_rate }}%</span>
                                             <br><small class="text-muted">퍼센트</small>
                                         @endif
-                                        @if($item->parentTier)
-                                            @php
-                                                $maxAllowed = $item->getMaxAllowedCommissionRate();
-                                            @endphp
-                                            <br><small class="text-danger">최대: {{ $maxAllowed }}%</small>
-                                        @endif
                                     </div>
                                 </td>
                                 <td>
                                     <div class="small">
-                                        @if($item->can_recruit)
-                                            <div class="text-success mb-1">
-                                                <i class="fe fe-check-circle me-1"></i>모집 가능
-                                            </div>
-                                            <div class="text-muted">
-                                                최대: {{ $item->max_children ?? '무제한' }}명
-                                            </div>
-                                            @if($item->max_depth)
-                                                <div class="text-muted">
-                                                    깊이: {{ $item->max_depth }}단계
-                                                </div>
-                                            @endif
-                                        @else
-                                            <span class="text-muted">모집 불가</span>
-                                        @endif
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="small">
-                                        @if($item->cost_management_enabled)
+                                        @if($item->registration_fee > 0 || $item->monthly_fee > 0 || $item->annual_fee > 0)
                                             @if($item->registration_fee > 0)
                                                 <div class="mb-1">
-                                                    <strong>가입비:</strong> {{ number_format($item->registration_fee) }}원
+                                                    <strong>가입:</strong> {{ number_format($item->registration_fee) }}원
                                                 </div>
                                             @endif
-                                            @if($item->monthly_maintenance_fee > 0)
+                                            @if($item->monthly_fee > 0)
                                                 <div class="mb-1">
-                                                    <strong>월비:</strong> {{ number_format($item->monthly_maintenance_fee) }}원
+                                                    <strong>월:</strong> {{ number_format($item->monthly_fee) }}원
                                                 </div>
                                             @endif
-                                            @if($item->annual_maintenance_fee > 0)
+                                            @if($item->annual_fee > 0)
                                                 <div class="text-muted">
-                                                    <strong>연비:</strong> {{ number_format($item->annual_maintenance_fee) }}원
+                                                    <strong>연:</strong> {{ number_format($item->annual_fee) }}원
+                                                </div>
+                                            @endif
+                                            @if($item->fee_waiver_available)
+                                                <div class="text-success mt-1">
+                                                    <small>면제가능</small>
                                                 </div>
                                             @endif
                                         @else
@@ -266,14 +255,29 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <div class="small">
-                                        <div class="mb-1">
-                                            <strong>{{ number_format($item->min_completed_jobs) }}건</strong>
-                                        </div>
-                                        <div class="d-flex align-items-center">
-                                            <i class="fe fe-star text-warning me-1"></i>
-                                            <span>{{ $item->min_rating }}/5.0</span>
-                                        </div>
+                                    <div class="small text-center">
+                                        @php
+                                            $requirements = $item->getRequirements();
+                                        @endphp
+                                        @if(isset($requirements['min_completed_jobs']))
+                                            <div class="mb-1">
+                                                <strong>{{ number_format($requirements['min_completed_jobs']) }}건</strong>
+                                            </div>
+                                        @endif
+                                        @if(isset($requirements['min_rating']))
+                                            <div class="d-flex align-items-center justify-content-center">
+                                                <i class="fe fe-star text-warning me-1"></i>
+                                                <span>{{ $requirements['min_rating'] }}/5.0</span>
+                                            </div>
+                                        @endif
+                                        @if(isset($requirements['min_experience_months']))
+                                            <div class="text-muted mt-1">
+                                                {{ $requirements['min_experience_months'] }}개월 경험
+                                            </div>
+                                        @endif
+                                        @if(count($requirements) === 0)
+                                            <span class="text-muted">없음</span>
+                                        @endif
                                     </div>
                                 </td>
                                 <td>

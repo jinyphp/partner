@@ -62,7 +62,7 @@
                     </div>
                     <div>
                         <span class="text-muted small d-block mb-2">{{ $currentUser->name ?? '사용자' }}님</span>
-                        <a href="{{ route('home.partner.regist.status', $rejectedApplication->id) }}" class="btn btn-outline-secondary btn-sm">
+                        <a href="{{ route('home.partner.regist.status') }}" class="btn btn-outline-secondary btn-sm">
                             <i class="bi bi-arrow-left me-1"></i>이전 신청 확인
                         </a>
                     </div>
@@ -646,7 +646,7 @@
 
             <!-- Submit Buttons -->
             <div class="d-flex justify-content-between">
-                <a href="{{ route('home.partner.regist.status', $application->id) }}"
+                <a href="{{ route('home.partner.regist.status') }}"
                    class="btn btn-outline-secondary px-4 py-2">
                     <i class="bi bi-arrow-left me-2"></i>취소
                 </a>

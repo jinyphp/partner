@@ -60,12 +60,38 @@ class StoreController extends PartnerController
         // Step3. 진행 중인 신청서가 있는지 확인 (UUID 기반)
         $existingApplication = PartnerApplication::where('user_uuid', $user->uuid)
             ->whereIn('application_status', ['submitted', 'reviewing', 'interview', 'approved'])
-            ->exists();
+            ->first();
 
         if ($existingApplication) {
-            \Log::info('StoreController: Existing application found, redirecting');
-            return redirect()->route('home.partner.regist.index')
-                ->with('error', '이미 진행 중인 신청이 있습니다.');
+            \Log::info('StoreController: Existing application found', [
+                'application_id' => $existingApplication->id,
+                'status' => $existingApplication->application_status,
+                'user_uuid' => $user->uuid
+            ]);
+
+            // 'approved' 상태의 신청서가 있지만 파트너 사용자로 등록되지 않은 경우
+            if ($existingApplication->application_status === 'approved' && !$isPartnerUser) {
+                \Log::warning('StoreController: Approved application exists but partner user not created', [
+                    'application_id' => $existingApplication->id,
+                    'user_uuid' => $user->uuid
+                ]);
+
+                return redirect()->route('home.partner.regist.status')
+                    ->with('info', '승인된 신청서가 있습니다. 파트너 등록이 완료되지 않은 경우 관리자에게 문의해주세요.');
+            }
+
+            // 다른 진행 중인 신청서가 있는 경우
+            $statusMessages = [
+                'submitted' => '제출된 신청서가 검토 중입니다.',
+                'reviewing' => '신청서가 검토 중입니다.',
+                'interview' => '면접이 예정되어 있습니다.',
+                'approved' => '이미 승인된 신청서가 있습니다.'
+            ];
+
+            $message = $statusMessages[$existingApplication->application_status] ?? '이미 진행 중인 신청이 있습니다.';
+
+            return redirect()->route('home.partner.regist.status')
+                ->with('info', $message);
         }
 
         \Log::info('StoreController: Starting validation', [
@@ -99,10 +125,46 @@ class StoreController extends PartnerController
         try {
             DB::beginTransaction();
 
-            // 기존 draft 삭제 (UUID 기반)
-            PartnerApplication::where('user_uuid', $user->uuid)
+            // 기존 draft 삭제 (UUID 기반) - 안전한 삭제
+            $deletedCount = PartnerApplication::where('user_uuid', $user->uuid)
                 ->where('application_status', 'draft')
                 ->delete();
+
+            if ($deletedCount > 0) {
+                \Log::info('StoreController: Deleted existing draft applications', [
+                    'deleted_count' => $deletedCount,
+                    'user_uuid' => $user->uuid
+                ]);
+            }
+
+            // 중복 방지를 위한 추가 체크 (UUID 기반으로 정확한 확인)
+            $activeApplicationCount = PartnerApplication::where('user_uuid', $user->uuid)
+                ->whereIn('application_status', ['submitted', 'reviewing', 'interview', 'approved'])
+                ->whereNull('deleted_at')
+                ->count();
+
+            if ($activeApplicationCount > 0) {
+                \Log::warning('StoreController: Active application found during transaction', [
+                    'user_id' => $user->id,
+                    'user_uuid' => $user->uuid,
+                    'active_count' => $activeApplicationCount
+                ]);
+
+                throw new \Exception('이미 처리 중인 신청서가 있습니다. 잠시 후 다시 시도해주세요.');
+            }
+
+            // 파트너 사용자 등록 여부도 UUID 기반으로 재확인
+            $existingPartnerUser = PartnerUser::where('user_uuid', $user->uuid)->first();
+            if ($existingPartnerUser) {
+                \Log::warning('StoreController: Partner user found during transaction', [
+                    'user_id' => $user->id,
+                    'user_uuid' => $user->uuid,
+                    'partner_id' => $existingPartnerUser->id,
+                    'partner_code' => $existingPartnerUser->partner_code
+                ]);
+
+                throw new \Exception('이미 파트너로 등록되어 있습니다.');
+            }
 
             // 파일 업로드 처리
             $documents = $this->handleFileUploads($request, $user->id);
@@ -308,7 +370,7 @@ class StoreController extends PartnerController
                         'message' => '파트너 신청서가 성공적으로 제출되었습니다' . $referralMessage . '! 검토 후 연락드리겠습니다.',
                         'application_id' => $application->id,
                         'status' => 'submitted',
-                        'redirect_url' => route('home.partner.regist.status', $application->id)
+                        'redirect_url' => route('home.partner.regist.status')
                     ]);
                 }
             }
@@ -321,15 +383,63 @@ class StoreController extends PartnerController
             } else {
                 \Log::info('StoreController: Redirecting to status page', [
                     'application_id' => $application->id,
-                    'status_route' => route('home.partner.regist.status', $application->id)
+                    'status_route' => route('home.partner.regist.status')
                 ]);
-                return redirect()->route('home.partner.regist.status', $application->id)
+                return redirect()->route('home.partner.regist.status')
                     ->with('success', '파트너 신청서가 성공적으로 제출되었습니다' . $referralMessage . '! 검토 후 연락드리겠습니다.');
             }
+
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollBack();
+
+            // 무결성 제약 조건 위반인 경우 특별 처리
+            if (str_contains($e->getMessage(), 'unique_active_application_per_user') ||
+                str_contains($e->getMessage(), 'UNIQUE constraint failed')) {
+
+                \Log::warning('StoreController: Unique constraint violation detected', [
+                    'user_id' => $user->id,
+                    'user_uuid' => $user->uuid,
+                    'error_message' => $e->getMessage()
+                ]);
+
+                $message = '이미 처리 중인 신청서가 있습니다. 기존 신청서 상태를 확인해주세요.';
+
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $message,
+                        'error' => 'DUPLICATE_APPLICATION'
+                    ], 422);
+                }
+
+                return redirect()->route('home.partner.regist.status')
+                    ->with('error', $message);
+            }
+
+            // 다른 데이터베이스 오류
+            \Log::error('StoreController: Database query exception', [
+                'user_id' => $user->id,
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine()
+            ]);
+
+            $message = '데이터베이스 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                    'error' => 'DATABASE_ERROR'
+                ], 500);
+            }
+
+            return back()->withInput()->with('error', $message);
 
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('StoreController: Exception occurred', [
+                'user_id' => $user->id,
                 'error_message' => $e->getMessage(),
                 'error_file' => $e->getFile(),
                 'error_line' => $e->getLine(),
